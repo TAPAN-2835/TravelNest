@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  name            String
+  passwordHash    String?
+  googleId        String?   @unique
+  role            Role      @default(USER)
+  avatar          String?
+  phone           String?
+  nationality     String?
+  travelStyle     String[]  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  trips           Trip[]
+  bookings        Booking[]
+  reviews         Review[]
+  documents       Document[]
+  refreshTokens   RefreshToken[]
+  budgets         Budget[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Destination {
+  id            String    @id @default(uuid())
+  name          String
+  country       String
+  continent     String
+  description   String
+  imageUrl      String
+  avgCostPerDay Float
+  bestSeason    String[]
+  tags          String[]
+  rating        Float     @default(0)
+  reviewCount   Int       @default(0)
+  latitude      Float
+  longitude     Float
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  trips         Trip[]
+  reviews       Review[]
+  bookings      Booking[]
+}
+
+model Trip {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinationId   String
+  destination     Destination @relation(fields: [destinationId], references: [id])
+  title           String
+  startDate       DateTime
+  endDate         DateTime
+  status          TripStatus  @default(PLANNING)
+  totalBudget     Float
+  currency        String      @default("INR")
+  groupSize       Int         @default(1)
+  travelStyle     String
+  coverImage      String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  budget          Budget?
+  bookings        Booking[]
+  documents       Document[]
+  alerts          Alert[]
+  itineraryId     String?     // References MongoDB document
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId          String
+  trip            Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  destinationId   String
+  destination     Destination   @relation(fields: [destinationId], references: [id])
+  type            BookingType
+  providerName    String
+  confirmationNo  String?
+  checkIn         DateTime?
+  checkOut        DateTime?
+  amount          Float
+  currency        String        @default("INR")
+  status          BookingStatus @default(PENDING)
+  details         Json
+  createdAt       DateTime      @default(now())
+}
+
+model Budget {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId      String    @unique
+  trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  totalAmount Float
+  currency    String    @default("INR")
+  expenses    Expense[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  budgetId    String
+  budget      Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category    ExpenseCategory
+  description String
+  amount      Float
+  date        DateTime
+  receiptUrl  String?
+  createdAt   DateTime        @default(now())
+}
+
+model Review {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinationId   String
+  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  rating          Int
+  comment         String
+  sentiment       Sentiment?
+  sentimentScore  Float?
+  images          String[]
+  createdAt       DateTime    @default(now())
+}
+
+model Document {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId      String?
+  trip        Trip?        @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  type        DocumentType
+  name        String
+  s3Key       String
+  s3Url       String
+  fileSize    Int
+  mimeType    String
+  expiryDate  DateTime?
+  createdAt   DateTime     @default(now())
+}
+
+model Alert {
+  id        String      @id @default(uuid())
+  tripId    String
+  trip      Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  type      AlertType
+  title     String
+  message   String
+  severity  Severity    @default(INFO)
+  isRead    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+}
+
+enum Role           { USER AGENT ADMIN }
+enum TripStatus     { PLANNING UPCOMING ONGOING COMPLETED CANCELLED }
+enum BookingType    { HOTEL FLIGHT ACTIVITY TRANSPORT }
+enum BookingStatus  { PENDING CONFIRMED CANCELLED REFUNDED }
+enum ExpenseCategory { FLIGHTS HOTELS FOOD ACTIVITIES TRANSPORT SHOPPING MISC }
+enum Sentiment      { POSITIVE NEUTRAL NEGATIVE }
+enum DocumentType   { PASSPORT VISA TICKET INSURANCE HOTEL_VOUCHER OTHER }
+enum AlertType      { WEATHER FLIGHT_DELAY TRAVEL_ADVISORY TRIP_REMINDER GENERAL }
+enum Severity       { INFO WARNING CRITICAL }

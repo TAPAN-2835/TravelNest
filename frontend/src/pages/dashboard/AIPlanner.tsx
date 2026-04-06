@@ -1,0 +1,213 @@
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, MapPin, Users, ChevronDown, ChevronUp, Clock, IndianRupee, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+
+const tripStyles = ["🏖 Beach", "🏔 Adventure", "🎭 Culture", "🛍 Shopping", "🍽 Food", "💆 Wellness"];
+
+const mockItinerary = [
+  {
+    day: "Day 1",
+    title: "Arrival & Exploration",
+    activities: [
+      { time: "Morning", name: "Arrive at Kempegowda International Airport", duration: "2 hrs", cost: "—" },
+      { time: "Afternoon", name: "Check in at The Leela Palace Bangalore", duration: "1 hr", cost: "₹12,000" },
+      { time: "Evening", name: "Visit Lalbagh Botanical Garden", duration: "2 hrs", cost: "₹50" },
+    ],
+  },
+  {
+    day: "Day 2",
+    title: "Cultural Immersion",
+    activities: [
+      { time: "Morning", name: "Bangalore Palace Tour", duration: "3 hrs", cost: "₹500" },
+      { time: "Afternoon", name: "Lunch at MTR – Mavalli Tiffin Rooms", duration: "1.5 hrs", cost: "₹800" },
+      { time: "Evening", name: "MG Road & Brigade Road Shopping", duration: "3 hrs", cost: "₹5,000" },
+    ],
+  },
+  {
+    day: "Day 3",
+    title: "Nature & Relaxation",
+    activities: [
+      { time: "Morning", name: "Nandi Hills Sunrise Drive", duration: "4 hrs", cost: "₹1,500" },
+      { time: "Afternoon", name: "Spa at The Leela Palace", duration: "2 hrs", cost: "₹4,000" },
+      { time: "Evening", name: "Dinner at Karavalli – Gateway Hotel", duration: "2 hrs", cost: "₹3,000" },
+    ],
+  },
+];
+
+export default function AIPlanner() {
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [budget, setBudget] = useState([50000]);
+  const [groupSize, setGroupSize] = useState(2);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showItinerary, setShowItinerary] = useState(false);
+  const [expandedDay, setExpandedDay] = useState<string | null>("Day 1");
+  const [itinerary, setItinerary] = useState<any>(null);
+  const [destination, setDestination] = useState("Bangalore, India");
+
+  const toggleStyle = (style: string) => {
+    setSelectedStyles((prev) => prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style]);
+  };
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const { aiApi } = await import("@/api/ai");
+      const { data } = await aiApi.generateItinerary({
+        destination,
+        days: 3, // Mocking days for now or getting from date range
+        budget: budget[0],
+        interests: selectedStyles,
+        countryPreference: "india-first",
+      });
+      setItinerary(data);
+      setShowItinerary(true);
+    } catch (err) {
+      console.error(err);
+      // TODO: Add toast error
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div>
+        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" /> AI Itinerary Generator
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">Tell us about your dream trip and let AI craft the perfect itinerary</p>
+      </div>
+
+      {/* Input Form */}
+      <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-6">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Destination</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search destination..." className="pl-9 h-11 rounded-lg" defaultValue="Bangalore, India" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Travel Dates</Label>
+            <Input type="text" placeholder="Select dates" className="h-11 rounded-lg" defaultValue="Apr 10 – Apr 13, 2026" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Budget: ₹{budget[0].toLocaleString("en-IN")}</Label>
+          <Slider value={budget} onValueChange={setBudget} min={10000} max={500000} step={5000} className="py-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>₹10,000</span>
+            <span>₹5,00,000</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Trip Style</Label>
+          <div className="flex flex-wrap gap-2">
+            {tripStyles.map((style) => (
+              <button
+                key={style}
+                onClick={() => toggleStyle(style)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                  selectedStyles.includes(style)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/50"
+                }`}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Group Size</Label>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setGroupSize(Math.max(1, groupSize - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground">-</button>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{groupSize}</span>
+            </div>
+            <button onClick={() => setGroupSize(groupSize + 1)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground">+</button>
+          </div>
+        </div>
+
+        <Button onClick={handleGenerate} disabled={isGenerating} className="w-full h-12 rounded-lg bg-primary text-primary-foreground text-base">
+          {isGenerating ? (
+            <span className="flex items-center gap-2">
+              <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                ✨
+              </motion.span>
+              Crafting your perfect trip...
+            </span>
+          ) : (
+            "Generate Itinerary ✨"
+          )}
+        </Button>
+      </div>
+
+      {/* Generated Itinerary */}
+      <AnimatePresence>
+        {showItinerary && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <h3 className="text-lg font-semibold text-foreground">Your AI-Generated Itinerary</h3>
+            {itinerary?.days?.map((day: any) => (
+              <div key={day.day} className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+                <button
+                  onClick={() => setExpandedDay(expandedDay === String(day.day) ? null : String(day.day))}
+                  className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-primary">Day {day.day}</span>
+                    <span className="text-sm font-medium text-foreground">{day.theme}</span>
+                  </div>
+                  {expandedDay === String(day.day) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                <AnimatePresence>
+                  {expandedDay === String(day.day) && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-4 space-y-3">
+                        {['morning', 'afternoon', 'evening'].map((timeSlot) => (
+                          day[timeSlot] && (
+                            <div key={timeSlot} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full capitalize whitespace-nowrap mt-0.5">
+                                {timeSlot}
+                              </span>
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-foreground">{day[timeSlot].activity}</div>
+                                <div className="text-xs text-muted-foreground">{day[timeSlot].place}</div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {day[timeSlot].duration}</span>
+                                  <span className="flex items-center gap-1"><IndianRupee className="h-3 w-3" /> {day[timeSlot].cost}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
