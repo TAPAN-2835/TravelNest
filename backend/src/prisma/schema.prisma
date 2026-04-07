@@ -129,17 +129,24 @@ model Expense {
 }
 
 model Review {
-  id              String      @id @default(uuid())
+  id              String       @id @default(uuid())
   userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   destinationId   String
-  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  destination     Destination  @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   rating          Int
   comment         String
   sentiment       Sentiment?
   sentimentScore  Float?
+  status          ReviewStatus @default(PENDING)
   images          String[]
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime     @default(now())
+}
+
+enum ReviewStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 model Document {
@@ -170,12 +177,69 @@ model Alert {
   createdAt DateTime    @default(now())
 }
 
-enum Role           { USER AGENT ADMIN }
-enum TripStatus     { PLANNING UPCOMING ONGOING COMPLETED CANCELLED }
-enum BookingType    { HOTEL FLIGHT ACTIVITY TRANSPORT }
-enum BookingStatus  { PENDING CONFIRMED CANCELLED REFUNDED }
-enum ExpenseCategory { FLIGHTS HOTELS FOOD ACTIVITIES TRANSPORT SHOPPING MISC }
-enum Sentiment      { POSITIVE NEUTRAL NEGATIVE }
-enum DocumentType   { PASSPORT VISA TICKET INSURANCE HOTEL_VOUCHER OTHER }
-enum AlertType      { WEATHER FLIGHT_DELAY TRAVEL_ADVISORY TRIP_REMINDER GENERAL }
-enum Severity       { INFO WARNING CRITICAL }
+enum Role {
+  USER
+  AGENT
+  ADMIN
+}
+
+enum TripStatus {
+  PLANNING
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingType {
+  HOTEL
+  FLIGHT
+  ACTIVITY
+  TRANSPORT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum ExpenseCategory {
+  FLIGHTS
+  HOTELS
+  FOOD
+  ACTIVITIES
+  TRANSPORT
+  SHOPPING
+  MISC
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum DocumentType {
+  PASSPORT
+  VISA
+  TICKET
+  INSURANCE
+  HOTEL_VOUCHER
+  OTHER
+}
+
+enum AlertType {
+  WEATHER
+  FLIGHT_DELAY
+  TRAVEL_ADVISORY
+  TRIP_REMINDER
+  GENERAL
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}

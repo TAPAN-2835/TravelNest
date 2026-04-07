@@ -1,18 +1,19 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import { SESClient } from '@aws-sdk/client-ses';
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { CloudWatchLogsClient } from '@aws-sdk/client-cloudwatch-logs';
+import { SchedulerClient } from '@aws-sdk/client-scheduler';
 
-export const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
+const config = {
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
-});
+};
 
-export const sesClient = new SESClient({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+export const s3Client = new S3Client(config);
+export const sesClient = new SESClient(config);
+export const sqsClient = new SQSClient(config);
+export const cwClient = new CloudWatchLogsClient(config);
+export const schedulerClient = new SchedulerClient(config);

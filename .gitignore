@@ -1,0 +1,149 @@
+# =========================
+
+# ROOT LEVEL
+
+# =========================
+
+# Node modules
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+
+.env
+.env.*
+!.env.example
+
+# Logs
+
+logs/
+*.log
+
+# OS files
+
+.DS_Store
+Thumbs.db
+
+# IDE
+
+.vscode/
+.idea/
+
+# Build outputs
+
+dist/
+build/
+coverage/
+
+# Docker
+
+*.pid
+*.seed
+
+# =========================
+
+# FRONTEND (React + Vite)
+
+# =========================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.*
+
+# =========================
+
+# BACKEND (Node + Express)
+
+# =========================
+
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/.env
+backend/.env.*
+backend/coverage/
+
+# Prisma
+
+backend/prisma/migrations/
+
+# (optional: keep if you want versioned migrations)
+
+# =========================
+
+# AI SERVICE (Python FastAPI)
+
+# =========================
+
+ai-service/**pycache**/
+ai-service/*.pyc
+ai-service/*.pyo
+ai-service/*.pyd
+ai-service/.Python
+ai-service/venv/
+ai-service/env/
+ai-service/.venv/
+ai-service/.env
+ai-service/.env.*
+ai-service/.pytest_cache/
+
+# =========================
+
+# AWS / CLOUD
+
+# =========================
+
+# AWS credentials
+
+.aws/
+*.pem
+
+# Terraform (if added later)
+
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# =========================
+
+# TESTING
+
+# =========================
+
+coverage/
+*.lcov
+
+# =========================
+
+# MISC
+
+# =========================
+
+tmp/
+temp/
+.cache/
+
+# Ignore uploads (if stored locally before S3)
+
+uploads/
+
+# Ignore generated files
+
+*.tsbuildinfo
+
+# =========================
+
+# KEEP THESE FILES
+
+# =========================
+
+!README.md
+!docker-compose.yml
+!backend/.env.example
+!frontend/.env.example

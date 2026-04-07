@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database';
-import { analyzeSentimentAI } from '../../shared/utils/openai.utils';
 import { AppError } from '../../shared/utils/response.utils';
+import { SQSService } from '../../shared/services/sqs.service';
 
 export class ReviewsService {
   static async getByDestination(destinationId: string, query: any) {
@@ -24,15 +24,18 @@ export class ReviewsService {
   }
 
   static async create(userId: string, data: any) {
-    const sentimentResult = await analyzeSentimentAI(data.comment);
-
     const review = await prisma.review.create({
       data: {
         ...data,
         userId,
-        sentiment: sentimentResult.sentiment,
-        sentimentScore: sentimentResult.score,
+        status: 'PENDING',
       },
+    });
+
+    // Push to SQS for async sentiment analysis
+    await SQSService.sendMessage(process.env.SQS_REVIEW_QUEUE || 'review-sentiment-queue', {
+      reviewId: review.id,
+      text: data.comment,
     });
 
     await this.updateDestinationRating(data.destinationId);
@@ -64,7 +67,7 @@ export class ReviewsService {
       select: { rating: true },
     });
 
-    const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+    const avgRating = reviews.length > 0 ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length : 0;
 
     await prisma.destination.update({
       where: { id: destinationId },
