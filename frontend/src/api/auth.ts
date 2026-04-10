@@ -3,11 +3,11 @@ import { User, ApiResponse } from '../types';
 
 export const authApi = {
   login: async (data: any) => {
-    const res = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/login', data);
+    const res = await api.post<ApiResponse<{ accessToken: string; user: User }>>('/auth/login', data);
     return res.data;
   },
   register: async (data: any) => {
-    const res = await api.post<ApiResponse<{ token: string; user: User }>>('/auth/register', data);
+    const res = await api.post<ApiResponse<{ accessToken: string; user: User }>>('/auth/register', data);
     return res.data;
   },
   getMe: async () => {

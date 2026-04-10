@@ -4,6 +4,7 @@ import { Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/format";
 
 const pieData = [
   { name: "Flights", value: 35000, color: "#6366f1" },
@@ -31,7 +32,7 @@ export default function BudgetTracker() {
   const fetchBudget = async () => {
     try {
       const { budgetApi } = await import("@/api/budget");
-      const tripId = "demo-trip-id"; 
+      const tripId = "demo-trip-id";
       const { data } = await budgetApi.getBudget(tripId);
       setBudgetData(data);
       setTripExpenses(data.expenses || []);
@@ -74,7 +75,7 @@ export default function BudgetTracker() {
       <div className="bg-card rounded-2xl border border-border shadow-card p-6">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-foreground">Total Budget</span>
-          <span className="text-sm text-muted-foreground">₹{totalSpent.toLocaleString("en-IN")} / ₹{totalBudget.toLocaleString("en-IN")}</span>
+          <span className="text-sm text-muted-foreground">{formatCurrency(totalSpent)} / {formatCurrency(totalBudget)}</span>
         </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <motion.div
@@ -84,7 +85,7 @@ export default function BudgetTracker() {
             className={`h-full rounded-full ${percentage > 90 ? "bg-destructive" : percentage > 70 ? "bg-warning" : "bg-primary"}`}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-2">{percentage}% of budget used • ₹{(totalBudget - totalSpent).toLocaleString("en-IN")} remaining</p>
+        <p className="text-xs text-muted-foreground mt-2">{percentage}% of budget used • {formatCurrency(totalBudget - totalSpent)} remaining</p>
       </div>
 
       {/* Charts */}
@@ -99,7 +100,7 @@ export default function BudgetTracker() {
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString("en-IN")}`} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -119,7 +120,7 @@ export default function BudgetTracker() {
             <BarChart data={barData}>
               <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
-              <Tooltip formatter={(value: number) => `₹${value.toLocaleString("en-IN")}`} />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
               <Bar dataKey="amount" fill="hsl(227, 100%, 55%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -152,7 +153,7 @@ export default function BudgetTracker() {
                     <span className="px-2 py-0.5 rounded-full bg-muted text-xs font-medium">{exp.category}</span>
                   </td>
                   <td className="p-3 text-sm text-foreground">{exp.description}</td>
-                  <td className="p-3 text-sm font-medium text-foreground">₹{exp.amount.toLocaleString()}</td>
+                  <td className="p-3 text-sm font-medium text-foreground">{formatCurrency(exp.amount)}</td>
                   <td className="p-3 text-sm text-muted-foreground">{new Date(exp.date).toLocaleDateString()}</td>
                   <td className="p-3">
                     <button onClick={() => handleDeleteExpense(exp.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>

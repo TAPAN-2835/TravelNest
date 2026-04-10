@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, Search } from "lucide-react";
+import { Heart, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 const filters = ["Budget", "Trending", "Beach", "Mountains", "Culture", "Adventure"];
 
 const destinations = [
-  { city: "Santorini", country: "Greece", cost: "₹1,20,000", score: 95, img: "photo-1570077188670-e3a8d69ac5ff", h: 400 },
-  { city: "Bali", country: "Indonesia", cost: "₹65,000", score: 92, img: "photo-1537996194471-e657df975ab4", h: 320 },
-  { city: "Kyoto", country: "Japan", cost: "₹1,10,000", score: 94, img: "photo-1493976040374-85c8e12f0c0e", h: 360 },
-  { city: "Marrakech", country: "Morocco", cost: "₹45,000", score: 88, img: "photo-1489749798305-4fea3ae63d43", h: 380 },
-  { city: "Reykjavik", country: "Iceland", cost: "₹1,80,000", score: 91, img: "photo-1504829857797-ddff29c27927", h: 340 },
-  { city: "Cape Town", country: "South Africa", cost: "₹85,000", score: 90, img: "photo-1580060839134-75a5edca2e99", h: 420 },
-  { city: "Lisbon", country: "Portugal", cost: "₹72,000", score: 93, img: "photo-1558618666-fcd25c85f82e", h: 300 },
-  { city: "Cusco", country: "Peru", cost: "₹95,000", score: 89, img: "photo-1526392060635-9d6019884377", h: 370 },
+  { city: "Udaipur", country: "India", cost: "₹45,000", score: 98, img: "photo-1591027480007-a42f6ef886c3", h: 400 },
+  { city: "Goa", country: "India", cost: "₹35,000", score: 96, img: "photo-1512343879784-a960bf40e7f2", h: 320 },
+  { city: "Manali", country: "India", cost: "₹28,000", score: 94, img: "photo-1626621341517-bbf3d9990a23", h: 360 },
+  { city: "Kerala", country: "India", cost: "₹55,000", score: 92, img: "photo-1602216056096-3b40cc0c9944", h: 380 },
+  { city: "Jaipur", country: "India", cost: "₹30,000", score: 95, img: "photo-1599661046289-e31897846e41", h: 340 },
+  { city: "Bali", country: "Indonesia", cost: "₹65,000", score: 92, img: "photo-1537996194471-e657df975ab4", h: 420 },
+  { city: "Kyoto", country: "Japan", cost: "₹1,10,000", score: 94, img: "photo-1493976040374-85c8e12f0c0e", h: 300 },
+  { city: "Reykjavik", country: "Iceland", cost: "₹1,80,000", score: 91, img: "photo-1504829857797-ddff29c27927", h: 370 },
   { city: "Bangkok", country: "Thailand", cost: "₹35,000", score: 87, img: "photo-1508009603885-50cf7c579365", h: 330 },
 ];
 
@@ -21,6 +22,7 @@ export default function Discover() {
   const [activeFilter, setActiveFilter] = useState("Trending");
   const [liked, setLiked] = useState<string[]>([]);
 
+  const navigate = useNavigate();
   const toggleLike = (city: string) => {
     setLiked((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
   };
@@ -42,11 +44,10 @@ export default function Discover() {
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                activeFilter === f
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${activeFilter === f
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               {f}
             </button>
@@ -99,7 +100,15 @@ export default function Discover() {
               <div className="absolute bottom-0 left-0 right-0 p-4">
                 <h3 className="text-lg font-bold text-white">{dest.city}</h3>
                 <p className="text-sm text-white/80">{dest.country}</p>
-                <p className="text-xs text-white/70 mt-1">Avg. cost: {dest.cost}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-white/70">Avg. cost: {dest.cost}</p>
+                  <button
+                    onClick={() => navigate("/dashboard/planner", { state: { destination: `${dest.city}, ${dest.country}` } })}
+                    className="flex items-center gap-1 text-[10px] font-bold text-white bg-white/20 hover:bg-white/30 backdrop-blur-md px-2 py-1 rounded-lg transition-colors border border-white/20"
+                  >
+                    <Sparkles className="h-3 w-3" /> PLAN
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>

@@ -10,7 +10,7 @@ export class ItineraryService {
     const { tripId, destination, country, startDate, endDate, budget, currency, travelStyle, groupSize, interests } = data;
 
     const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-    
+
     try {
       const result = await this.callAIWithRetry({
         destination,
@@ -19,24 +19,26 @@ export class ItineraryService {
         interests,
         countryPreference: data.countryPreference || 'international',
       });
-      
+
       const itinerary = await ItineraryModel.create({
-        tripId,
+        tripId: tripId || `temp_${Date.now()}`,
         userId,
         destination,
         duration: result.days.length,
         ...result,
       });
 
-      await prisma.trip.update({
-        where: { id: tripId },
-        data: { itineraryId: (itinerary as any)._id.toString() },
-      });
+      if (tripId) {
+        await prisma.trip.update({
+          where: { id: tripId },
+          data: { itineraryId: (itinerary as any)._id.toString() },
+        });
+      }
 
-      await setCachedData(`itinerary:${tripId}`, itinerary, 86400); // 24h cache
-      
+      await setCachedData(`itinerary:${(itinerary as any).tripId}`, itinerary, 86400); // 24h cache
+
       io.to(`trip:${tripId}`).emit('itinerary:ready', { itinerary });
-      
+
       return itinerary;
     } catch (error) {
       console.error('AI Generation Error:', error);
@@ -63,7 +65,7 @@ export class ItineraryService {
     );
 
     if (!itinerary) throw new AppError('Itinerary or day not found', 404);
-    
+
     await setCachedData(`itinerary:${tripId}`, itinerary, 86400);
     return itinerary;
   }

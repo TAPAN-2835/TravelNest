@@ -2,16 +2,18 @@ import { z } from 'zod';
 
 export const generateItinerarySchema = z.object({
   body: z.object({
-    tripId: z.string().uuid(),
+    tripId: z.string().uuid().optional(),
     destination: z.string(),
-    country: z.string(),
-    startDate: z.string().datetime(),
-    endDate: z.string().datetime(),
-    budget: z.number().positive(),
+    country: z.string().optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+    budget: z.number().positive().optional(),
     currency: z.string().default('INR'),
-    travelStyle: z.string(),
-    groupSize: z.number().int().positive(),
-    interests: z.array(z.string()),
+    travelStyle: z.string().optional(),
+    groupSize: z.number().int().positive().optional(),
+    interests: z.array(z.string()).optional(),
+    days: z.number().int().positive().optional(),
+    countryPreference: z.string().optional(),
   }),
 });
 

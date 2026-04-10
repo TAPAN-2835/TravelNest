@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { formatCurrency } from "@/lib/format";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -72,7 +73,7 @@ export default function SettingsPage() {
           <CreditCard className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Billing</h3>
         </div>
-        <p className="text-sm text-muted-foreground">Current plan: <strong className="text-foreground">Pro — ₹499/month</strong></p>
+        <p className="text-sm text-muted-foreground">Current plan: <strong className="text-foreground">Pro — {formatCurrency(499)}/month</strong></p>
         <Button variant="outline" className="rounded-lg">Manage Subscription</Button>
       </div>
     </div>

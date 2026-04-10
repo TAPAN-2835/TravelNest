@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (data: any) => {
     const { data: authData } = await authApi.login(data);
-    localStorage.setItem('jwt_token', authData.token);
+    localStorage.setItem('jwt_token', authData.accessToken);
     setUser(authData.user);
   };
 

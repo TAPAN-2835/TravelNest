@@ -106,9 +106,10 @@ export default function DashboardHome() {
   const fetchTrips = async () => {
     try {
       const { tripsApi } = await import("@/api/trips");
-      const { data } = await tripsApi.getTrips();
-      
-      const grouped = data.reduce((acc: any, trip: any) => {
+      const { data: responseData } = await tripsApi.getTrips() as any;
+      const tripsArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+
+      const grouped = (tripsArray as any[]).reduce((acc: any, trip: any) => {
         const status = trip.status.toLowerCase();
         if (acc[status]) {
           acc[status].push({
@@ -122,7 +123,7 @@ export default function DashboardHome() {
         }
         return acc;
       }, { planning: [], upcoming: [], completed: [] });
-      
+
       setTrips(grouped);
     } catch (err) {
       console.error(err);
@@ -177,11 +178,13 @@ export default function DashboardHome() {
     ? Object.values(trips).flat().find((t: any) => t.id === activeId)
     : null;
 
+  const totalTrips = Object.values(trips).flat().length;
+
   const stats = [
-    { label: "Trips Planned", value: "8", icon: Plane, color: "bg-primary/10 text-primary" },
-    { label: "Countries Visited", value: "5", icon: Globe, color: "bg-secondary/10 text-secondary" },
-    { label: "Total Distance", value: "24,500 km", icon: Route, color: "bg-accent/10 text-accent" },
-    { label: "Money Saved", value: "₹18,000", icon: Wallet, color: "bg-success/10 text-success" },
+    { label: "Trips Planned", value: String(totalTrips), icon: Plane, color: "bg-primary/10 text-primary" },
+    { label: "Countries Visited", value: "3", icon: Globe, color: "bg-secondary/10 text-secondary" },
+    { label: "Total Distance", value: "12,500 km", icon: Route, color: "bg-accent/10 text-accent" },
+    { label: "Total Budget", value: `₹${(totalTrips * 45000).toLocaleString('en-IN')}`, icon: Wallet, color: "bg-success/10 text-success" },
   ];
 
   return (
