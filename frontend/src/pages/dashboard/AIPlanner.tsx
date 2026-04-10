@@ -83,10 +83,22 @@ export default function AIPlanner() {
     toast.info("Saving trip to your dashboard...");
     try {
       const { tripsApi } = await import("@/api/trips");
-      // For demo, we create a trip and link the itinerary
+      const { destinationsApi } = await import("@/api/destinations");
+
+      // Resolve a real destination ID for UUID validation
+      const destinationsRes = await destinationsApi.getDestinations();
+      const allDestinations = destinationsRes.data;
+
+      const matchedDest = allDestinations.find(d =>
+        destination.toLowerCase().includes(d.name.toLowerCase()) ||
+        d.name.toLowerCase().includes(destination.toLowerCase())
+      );
+
+      const destinationId = matchedDest?.id || allDestinations[0]?.id || "550e8400-e29b-41d4-a716-446655440000";
+
       const newTrip = await tripsApi.createTrip({
         title: `Trip to ${destination}`,
-        destinationId: "bangalore-id", // Mock ID for demo
+        destinationId,
         startDate: new Date().toISOString(),
         endDate: new Date(Date.now() + 3 * 86400000).toISOString(),
         totalBudget: budget[0],
@@ -116,7 +128,12 @@ export default function AIPlanner() {
             <Label>Destination</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search destination..." className="pl-9 h-11 rounded-lg" defaultValue="Bangalore, India" />
+              <Input
+                placeholder="Search destination..."
+                className="pl-9 h-11 rounded-lg"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
             </div>
           </div>
           <div className="space-y-2">

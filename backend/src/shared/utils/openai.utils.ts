@@ -12,8 +12,18 @@ export const generateItineraryAI = async (data: {
 }) => {
   try {
     const response = await axios.post(`${AI_SERVICE_URL}/generate`, data);
-    // Python service returns the JSON object directly or as a string depending on implementation
-    return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    const result = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+    // Support both old flat format and new { success, data } format
+    if (result.success && result.data) {
+      const data = result.data;
+      return {
+        ...data,
+        days: data.itinerary || data.days, // Map 'itinerary' back to 'days'
+        totalEstimatedCost: data.totalEstimatedCost || (data as any).total_estimated_cost
+      };
+    }
+    return result;
   } catch (error: any) {
     console.error('AI Service Error (Generate):', error.response?.data || error.message);
     throw new AppError('AI Service unavailable', 503);

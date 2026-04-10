@@ -115,11 +115,19 @@ async function main() {
       tags: ['Adventure', 'Spiritual', 'Budget'], latitude: 30.0869, longitude: 78.2676,
       rating: 4.5, reviewCount: 0,
     },
+    {
+      name: 'Gujarat', country: 'India', continent: 'Asia',
+      description: 'Land of diverse landscapes — salt deserts, wildlife sanctuaries, and ancient heritage.',
+      imageUrl: 'https://images.unsplash.com/photo-1594632420427-463832ca831c?w=800',
+      avgCostPerDay: 3000, bestSeason: ['Winter', 'Autumn'],
+      tags: ['Culture', 'Heritage', 'Wildlife'], latitude: 22.2587, longitude: 71.1924,
+      rating: 4.7, reviewCount: 0,
+    },
   ];
 
   for (const dest of destinationsData) {
-    const existing = await prisma.destination.findFirst({ 
-      where: { name: dest.name } 
+    const existing = await prisma.destination.findFirst({
+      where: { name: dest.name }
     });
     if (!existing) {
       await prisma.destination.create({ data: dest });
@@ -140,8 +148,8 @@ async function main() {
     },
   });
 
-  const goaDest = await prisma.destination.findFirst({ 
-    where: { name: 'Goa' } 
+  const goaDest = await prisma.destination.findFirst({
+    where: { name: 'Goa' }
   });
 
   if (goaDest) {

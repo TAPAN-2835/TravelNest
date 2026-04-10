@@ -8,8 +8,11 @@ import { io } from '../../config/socket';
 export class ItineraryService {
   static async generate(userId: string, data: any) {
     const { tripId, destination, country, startDate, endDate, budget, currency, travelStyle, groupSize, interests } = data;
-
-    const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
+    let days = data.days;
+    if (!days && startDate && endDate) {
+      days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
+    }
+    days = days || 3;
 
     try {
       const result = await this.callAIWithRetry({
