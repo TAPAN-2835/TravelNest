@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import http from 'http';
 import app from './app';
 import { connectMongoDB, prisma } from './config/database';
@@ -18,7 +19,7 @@ const startServer = async () => {
   try {
     await connectMongoDB();
     await prisma.$connect();
-    
+
     server.listen(PORT, () => {
       console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
       console.log(`API Docs available at http://localhost:${PORT}/api-docs`);
