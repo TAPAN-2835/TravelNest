@@ -32,13 +32,13 @@ async def generate_itinerary(request: ItineraryRequest):
     Includes comprehensive error handling and safe fallbacks.
     """
     try:
-        result = agent.plan_trip(
+        result = await agent.plan_trip(
             destination=request.destination,
             days=request.days,
             budget=request.budget,
             interests=request.interests
         )
-        return result  # Already follows {"success": True, "data": {...}}
+        return result
         
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
