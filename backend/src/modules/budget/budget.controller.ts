@@ -4,7 +4,7 @@ import { sendSuccess } from '../../shared/utils/response.utils';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
 export class BudgetController {
-  static async getByTripId(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getByTripId(req: any, res: Response, next: NextFunction) {
     try {
       const budget = await BudgetService.getByTripId(req.user!.id, req.params.tripId);
       sendSuccess(res, 'Budget fetched successfully', budget);
@@ -13,7 +13,7 @@ export class BudgetController {
     }
   }
 
-  static async addExpense(req: AuthRequest, res: Response, next: NextFunction) {
+  static async addExpense(req: any, res: Response, next: NextFunction) {
     try {
       const expense = await BudgetService.addExpense(req.user!.id, req.params.tripId, req.body);
       sendSuccess(res, 'Expense added successfully', expense, 201);
@@ -22,7 +22,7 @@ export class BudgetController {
     }
   }
 
-  static async updateExpense(req: AuthRequest, res: Response, next: NextFunction) {
+  static async updateExpense(req: any, res: Response, next: NextFunction) {
     try {
       const expense = await BudgetService.updateExpense(req.user!.id, req.params.expenseId, req.body);
       sendSuccess(res, 'Expense updated successfully', expense);
@@ -31,7 +31,7 @@ export class BudgetController {
     }
   }
 
-  static async deleteExpense(req: AuthRequest, res: Response, next: NextFunction) {
+  static async deleteExpense(req: any, res: Response, next: NextFunction) {
     try {
       await BudgetService.deleteExpense(req.user!.id, req.params.expenseId);
       sendSuccess(res, 'Expense deleted successfully');
@@ -40,7 +40,7 @@ export class BudgetController {
     }
   }
 
-  static async updateTotal(req: AuthRequest, res: Response, next: NextFunction) {
+  static async updateTotal(req: any, res: Response, next: NextFunction) {
     try {
       const budget = await BudgetService.updateTotal(req.user!.id, req.params.tripId, req.body);
       sendSuccess(res, 'Budget total updated successfully', budget);
@@ -49,7 +49,7 @@ export class BudgetController {
     }
   }
 
-  static async exportCSV(req: AuthRequest, res: Response, next: NextFunction) {
+  static async exportCSV(req: any, res: Response, next: NextFunction) {
     try {
       const csv = await BudgetService.exportCSV(req.user!.id, req.params.tripId);
       res.header('Content-Type', 'text/csv');

@@ -18,4 +18,3 @@ export const documentApi = {
     return res.data;
   },
 };
- bitumen

@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./hooks/auth/useAuth";
 import PrivateRoute from "./components/PrivateRoute";
-import LandingPage from "./pages/LandingPage";
+import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -29,10 +29,10 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            
+
             {/* Protected Dashboard Routes */}
             <Route path="/dashboard" element={<PrivateRoute />}>
               <Route element={<DashboardLayout />}>
@@ -46,7 +46,7 @@ const App = () => (
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>
-            
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -54,8 +54,5 @@ const App = () => (
     </AuthProvider>
   </QueryClientProvider>
 );
-
-// Wrapper to avoid naming conflict
-const DboardLayout = DashboardLayout;
 
 export default App;

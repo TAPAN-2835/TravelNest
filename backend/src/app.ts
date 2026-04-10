@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerOptions from '../swagger.config';
+import swaggerOptions from './swagger.config';
 import { globalErrorHandler } from './middlewares/error.middleware';
 import { limiter } from './middlewares/rateLimit.middleware';
 

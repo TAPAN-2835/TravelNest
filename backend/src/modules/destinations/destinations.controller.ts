@@ -32,7 +32,7 @@ export class DestinationsController {
     }
   }
 
-  static async getRecommended(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getRecommended(req: any, res: Response, next: NextFunction) {
     try {
       const user = await req.user; // Simplified, ideally fetch user from DB
       const recommended = await DestinationsService.getRecommended(req.user!.role === 'USER' ? [] : []); // Logic based on travel style

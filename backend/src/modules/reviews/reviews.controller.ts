@@ -13,7 +13,7 @@ export class ReviewsController {
     }
   }
 
-  static async create(req: AuthRequest, res: Response, next: NextFunction) {
+  static async create(req: any, res: Response, next: NextFunction) {
     try {
       const review = await ReviewsService.create(req.user!.id, req.body);
       sendSuccess(res, 'Review created successfully', review, 201);
@@ -22,7 +22,7 @@ export class ReviewsController {
     }
   }
 
-  static async getMyReviews(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getMyReviews(req: any, res: Response, next: NextFunction) {
     try {
       const reviews = await ReviewsService.getMyReviews(req.user!.id);
       sendSuccess(res, 'User reviews fetched', reviews);
@@ -31,7 +31,7 @@ export class ReviewsController {
     }
   }
 
-  static async delete(req: AuthRequest, res: Response, next: NextFunction) {
+  static async delete(req: any, res: Response, next: NextFunction) {
     try {
       await ReviewsService.delete(req.user!.id, req.params.id, req.user!.role === 'ADMIN');
       sendSuccess(res, 'Review deleted successfully');

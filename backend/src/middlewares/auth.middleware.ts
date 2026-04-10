@@ -3,10 +3,7 @@ import { verifyAccessToken } from '../shared/utils/jwt.utils';
 import { AppError } from '../shared/utils/response.utils';
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
+  user?: any;
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {

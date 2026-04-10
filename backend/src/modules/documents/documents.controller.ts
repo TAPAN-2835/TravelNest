@@ -4,7 +4,7 @@ import { sendSuccess } from '../../shared/utils/response.utils';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
 export class DocumentsController {
-  static async getUploadUrl(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getUploadUrl(req: any, res: Response, next: NextFunction) {
     try {
       const data = await DocumentsService.getUploadUrl(req.user!.id, req.body);
       sendSuccess(res, 'Upload URL generated', data);
@@ -13,7 +13,7 @@ export class DocumentsController {
     }
   }
 
-  static async confirmUpload(req: AuthRequest, res: Response, next: NextFunction) {
+  static async confirmUpload(req: any, res: Response, next: NextFunction) {
     try {
       const document = await DocumentsService.confirmUpload(
         req.user!.id,
@@ -26,7 +26,7 @@ export class DocumentsController {
     }
   }
 
-  static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getAll(req: any, res: Response, next: NextFunction) {
     try {
       const documents = await DocumentsService.getAll(
         req.user!.id,
@@ -39,7 +39,7 @@ export class DocumentsController {
     }
   }
 
-  static async delete(req: AuthRequest, res: Response, next: NextFunction) {
+  static async delete(req: any, res: Response, next: NextFunction) {
     try {
       await DocumentsService.delete(req.user!.id, req.params.id);
       sendSuccess(res, 'Document deleted successfully');
@@ -48,7 +48,7 @@ export class DocumentsController {
     }
   }
 
-  static async getDownloadUrl(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getDownloadUrl(req: any, res: Response, next: NextFunction) {
     try {
       const downloadUrl = await DocumentsService.getDownloadUrl(req.user!.id, req.params.id);
       sendSuccess(res, 'Download URL fetched', { downloadUrl });

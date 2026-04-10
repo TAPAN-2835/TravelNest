@@ -4,7 +4,7 @@ import { sendSuccess } from '../../shared/utils/response.utils';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
 export class BookingsController {
-  static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getAll(req: any, res: Response, next: NextFunction) {
     try {
       const bookings = await BookingsService.getAll(req.user!.id, req.query);
       sendSuccess(res, 'Bookings fetched successfully', bookings);
@@ -13,7 +13,7 @@ export class BookingsController {
     }
   }
 
-  static async create(req: AuthRequest, res: Response, next: NextFunction) {
+  static async create(req: any, res: Response, next: NextFunction) {
     try {
       const booking = await BookingsService.create(req.user!.id, req.body);
       sendSuccess(res, 'Booking created successfully', booking, 201);
@@ -22,7 +22,7 @@ export class BookingsController {
     }
   }
 
-  static async getById(req: AuthRequest, res: Response, next: NextFunction) {
+  static async getById(req: any, res: Response, next: NextFunction) {
     try {
       const booking = await BookingsService.getById(req.user!.id, req.params.id);
       sendSuccess(res, 'Booking details fetched', booking);
@@ -31,7 +31,7 @@ export class BookingsController {
     }
   }
 
-  static async update(req: AuthRequest, res: Response, next: NextFunction) {
+  static async update(req: any, res: Response, next: NextFunction) {
     try {
       const booking = await BookingsService.update(req.user!.id, req.params.id, req.body);
       sendSuccess(res, 'Booking updated successfully', booking);
@@ -40,7 +40,7 @@ export class BookingsController {
     }
   }
 
-  static async cancel(req: AuthRequest, res: Response, next: NextFunction) {
+  static async cancel(req: any, res: Response, next: NextFunction) {
     try {
       const booking = await BookingsService.cancel(req.user!.id, req.params.id);
       sendSuccess(res, 'Booking cancelled successfully', booking);
