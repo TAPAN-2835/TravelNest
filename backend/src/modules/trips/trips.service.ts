@@ -36,17 +36,68 @@ export class TripsService {
   static async create(userId: string, data: any) {
     return await prisma.trip.create({
       data: {
-        ...data,
+        title: data.title,
+        destinationId: data.destinationId,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        totalBudget: Number(data.totalBudget) || 0,
+        currency: data.currency || 'INR',
+        groupSize: data.groupSize || 1,
+        travelStyle: data.travelStyle || 'General',
+        notes: data.notes,
+        coverImage: data.coverImage,
         userId,
         budget: {
           create: {
-            totalAmount: data.totalBudget,
-            currency: data.currency,
+            totalAmount: Number(data.totalBudget) || 0,
+            currency: data.currency || 'INR',
             userId,
           },
         },
       },
     });
+  }
+
+  static async saveGeneratedTrip(userId: string, data: any) {
+    const trip = await prisma.trip.create({
+      data: {
+        title: data.title,
+        destinationId: data.destinationId,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        totalBudget: data.totalBudget,
+        travelStyle: data.travelStyle,
+        userId,
+        budget: {
+          create: {
+            totalAmount: data.totalBudget,
+            currency: data.currency || 'INR',
+            userId,
+          },
+        },
+      },
+    });
+
+    if (data.itineraryData) {
+      const ItineraryModel = (await import('../itinerary/itinerary.model')).default;
+      const itinerary = await ItineraryModel.create({
+        tripId: trip.id,
+        userId,
+        destination: data.itineraryData.destination,
+        duration: data.itineraryData.days?.length || 3,
+        days: data.itineraryData.days || [],
+        flights: data.itineraryData.flights || [],
+        hotels: data.itineraryData.hotels || [],
+        totalEstimatedCost: data.itineraryData.totalEstimatedCost || 0,
+        currency: 'INR',
+      });
+      await prisma.trip.update({
+        where: { id: trip.id },
+        data: { itineraryId: (itinerary as any)._id.toString() },
+      });
+    }
+
+    return trip;
   }
 
   static async getById(userId: string, id: string) {

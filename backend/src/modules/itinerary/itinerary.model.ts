@@ -101,6 +101,8 @@ const ItinerarySchema: Schema = new Schema({
   ],
   totalEstimatedCost: { type: Number },
   currency: { type: String },
+  flights: [{ type: Schema.Types.Mixed }],
+  hotels: [{ type: Schema.Types.Mixed }],
   travelTips: [{ type: String }],
   packingList: [{ type: String }],
   emergencyContacts: [{ type: String }],

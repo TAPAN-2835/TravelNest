@@ -1,13 +1,17 @@
 import os
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 load_dotenv()
 
-from agent.crew_planner import generate_trip_plan
+from agent.orchestrator import TravelAgent
 
-app = FastAPI(title="TravelNest AI Service")
+app = FastAPI(title="TravelNest AI Service", version="2.0.0")
+
+# Single shared agent instance (stateless, safe to reuse)
+_agent = TravelAgent()
+
 
 class ItineraryRequest(BaseModel):
     destination: str
@@ -16,40 +20,51 @@ class ItineraryRequest(BaseModel):
     interests: Optional[List[str]] = ["sightseeing"]
     countryPreference: Optional[str] = "india-first"
 
+
 @app.get("/health")
 async def health():
     return {
         "success": True,
         "service": "TravelNest AI",
-        "provider": os.getenv("LLM_PROVIDER", "openai")
+        "provider": os.getenv("LLM_PROVIDER", "groq"),
+        "model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
     }
+
 
 @app.post("/generate")
 @app.post("/plan-trip")
 async def handle_generate_itinerary(request: ItineraryRequest):
     """
-    Main entry point for generating itineraries.
-    Includes comprehensive error handling and safe fallbacks.
+    Main trip-planning endpoint.
+    Delegates to TravelAgent (orchestrator) which:
+      1. Parses and validates inputs
+      2. Fetches live weather (OpenWeatherMap) + places (OpenTripMap) async
+      3. Merges with curated static dataset
+      4. Calls Groq LLM to generate a structured itinerary
+      5. Falls back to FallbackEngine on any LLM error
     """
+    if not request.destination or not request.destination.strip():
+        raise HTTPException(status_code=400, detail="destination is required")
+
+    if request.budget is not None and request.budget < 0:
+        raise HTTPException(status_code=400, detail="budget cannot be negative")
+
     try:
-        result = await generate_trip_plan(
-            destination=request.destination,
-            budget=request.budget,
+        result = await _agent.plan_trip(
+            destination=request.destination.strip(),
             days=request.days,
-            preferences=request.interests
+            budget=request.budget,
+            interests=request.interests,
         )
         return result
-        
+
     except Exception as e:
-        print(f"CRITICAL ERROR: {e}")
+        print(f"CRITICAL ERROR in /plan-trip: {e}")
         raise HTTPException(
-            status_code=500, 
-            detail={
-                "success": False,
-                "error": "Internal Server Error in AI Logic",
-                "message": str(e)
-            }
+            status_code=500,
+            detail={"success": False, "error": str(e)},
         )
+
 
 if __name__ == "__main__":
     import uvicorn

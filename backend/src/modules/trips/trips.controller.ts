@@ -22,6 +22,15 @@ export class TripsController {
     }
   }
 
+  static async saveGenerated(req: any, res: Response, next: NextFunction) {
+    try {
+      const trip = await TripsService.saveGeneratedTrip(req.user!.id, req.body);
+      sendSuccess(res, 'Generated Trip saved successfully', trip, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getById(req: any, res: Response, next: NextFunction) {
     try {
       const trip = await TripsService.getById(req.user!.id, req.params.id);

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, MapPin, Users, ChevronDown, ChevronUp, Clock, IndianRupee, Plus, Save } from "lucide-react";
+import { Sparkles, MapPin, Users, ChevronDown, ChevronUp, Clock, IndianRupee, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const tripStyles = ["🏖 Beach", "🏔 Adventure", "🎭 Culture", "🛍 Shopping", "🍽 Food", "💆 Wellness"];
 
@@ -47,7 +47,8 @@ export default function AIPlanner() {
   const [groupSize, setGroupSize] = useState(2);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showItinerary, setShowItinerary] = useState(false);
-  const [expandedDay, setExpandedDay] = useState<string | null>("Day 1");
+  // Initialize to "1" so it matches String(day.day) === "1" for Day 1
+  const [expandedDay, setExpandedDay] = useState<string | null>("1");
   const [itinerary, setItinerary] = useState<any>(null);
   const [destination, setDestination] = useState("Bangalore, India");
   const navigate = useNavigate();
@@ -96,13 +97,14 @@ export default function AIPlanner() {
 
       const destinationId = matchedDest?.id || allDestinations[0]?.id || "550e8400-e29b-41d4-a716-446655440000";
 
-      const newTrip = await tripsApi.createTrip({
+      const newTrip = await tripsApi.saveGeneratedTrip({
         title: `Trip to ${destination}`,
         destinationId,
         startDate: new Date().toISOString(),
         endDate: new Date(Date.now() + 3 * 86400000).toISOString(),
         totalBudget: budget[0],
         travelStyle: selectedStyles[0] || "Culture",
+        itineraryData: itinerary,
       });
 
       toast.success("Trip saved! Redirecting...");
@@ -276,7 +278,7 @@ export default function AIPlanner() {
                     <p className="text-sm text-muted-foreground">Class: {flight.travel_class} | Stops: {flight.stops}</p>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">{flight.price.includes('₹') ? flight.price : `₹${flight.price}`}</div>
+                    <div className="font-bold text-lg">{String(flight.price).includes('₹') ? flight.price : `₹${flight.price}`}</div>
                     <div className="text-sm text-muted-foreground">{flight.duration}</div>
                   </div>
                 </div>
@@ -299,7 +301,7 @@ export default function AIPlanner() {
                     <p className="text-sm text-muted-foreground">Rating: {hotel.rating} ⭐</p>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">{hotel.price.includes('₹') ? hotel.price : `₹${hotel.price}`}</div>
+                    <div className="font-bold text-lg">{String(hotel.price).includes('₹') ? hotel.price : `₹${hotel.price}`}</div>
                     <div className="text-sm text-muted-foreground">per night</div>
                   </div>
                 </div>

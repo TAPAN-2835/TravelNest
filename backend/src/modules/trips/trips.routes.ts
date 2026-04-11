@@ -28,6 +28,15 @@ router.post('/', validate(createTripSchema), TripsController.create);
 
 /**
  * @swagger
+ * /api/trips/save:
+ *   post:
+ *     summary: Create new trip and store itinerary data
+ *     tags: [Trips]
+ */
+router.post('/save', TripsController.saveGenerated);
+
+/**
+ * @swagger
  * /api/trips/:id:
  *   get:
  *     summary: Get trip details

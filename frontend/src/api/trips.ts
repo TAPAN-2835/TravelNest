@@ -10,6 +10,10 @@ export const tripsApi = {
     const res = await api.post<ApiResponse<Trip>>('/trips', data);
     return res.data;
   },
+  saveGeneratedTrip: async (data: any) => {
+    const res = await api.post<ApiResponse<Trip>>('/trips/save', data);
+    return res.data;
+  },
   updateTripStatus: async (id: string, status: string) => {
     const res = await api.patch<ApiResponse<Trip>>(`/trips/${id}/status`, { status });
     return res.data;
