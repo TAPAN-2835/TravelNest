@@ -9,7 +9,7 @@ export const aiApi = {
     interests: string[];
     countryPreference?: string;
   }) => {
-    const res = await api.post<ApiResponse<Itinerary>>('/itinerary/generate', data);
+    const res = await api.post<ApiResponse<any>>('/ai/plan-trip', data);
     return res.data;
   },
 };

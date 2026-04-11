@@ -3,12 +3,11 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from agent.orchestrator import TravelAgent
-
 load_dotenv()
 
+from agent.crew_planner import generate_trip_plan
+
 app = FastAPI(title="TravelNest AI Service")
-agent = TravelAgent()
 
 class ItineraryRequest(BaseModel):
     destination: str
@@ -22,27 +21,27 @@ async def health():
     return {
         "success": True,
         "service": "TravelNest AI",
-        "provider": os.getenv("LLM_PROVIDER", "groq")
+        "provider": os.getenv("LLM_PROVIDER", "openai")
     }
 
 @app.post("/generate")
-async def generate_itinerary(request: ItineraryRequest):
+@app.post("/plan-trip")
+async def handle_generate_itinerary(request: ItineraryRequest):
     """
     Main entry point for generating itineraries.
     Includes comprehensive error handling and safe fallbacks.
     """
     try:
-        result = await agent.plan_trip(
+        result = await generate_trip_plan(
             destination=request.destination,
-            days=request.days,
             budget=request.budget,
-            interests=request.interests
+            days=request.days,
+            preferences=request.interests
         )
         return result
         
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
-        # Final safety net returns 500 with clear message
         raise HTTPException(
             status_code=500, 
             detail={

@@ -262,6 +262,52 @@ export default function AIPlanner() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showItinerary && itinerary?.flights?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mt-4">Recommended Flights ✈️</h3>
+            <div className="grid gap-4">
+              {itinerary.flights.map((flight: any, idx: number) => (
+                <div key={idx} className="bg-card p-4 rounded-xl border border-border shadow-card flex flex-col md:flex-row justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-primary">{flight.airline}</h4>
+                    <p className="text-sm text-muted-foreground">{flight.departure} &rarr; {flight.arrival}</p>
+                    <p className="text-sm text-muted-foreground">Class: {flight.travel_class} | Stops: {flight.stops}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg">{flight.price.includes('₹') ? flight.price : `₹${flight.price}`}</div>
+                    <div className="text-sm text-muted-foreground">{flight.duration}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showItinerary && itinerary?.hotels?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <h3 className="text-lg font-semibold text-foreground mt-4">Recommended Hotels 🏨</h3>
+            <div className="grid gap-4">
+              {itinerary.hotels.map((hotel: any, idx: number) => (
+                <div key={idx} className="bg-card p-4 rounded-xl border border-border shadow-card flex flex-col md:flex-row justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-primary">{hotel.name}</h4>
+                    <p className="text-sm text-muted-foreground">{hotel.location}</p>
+                    <p className="text-sm text-muted-foreground">Rating: {hotel.rating} ⭐</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg">{hotel.price.includes('₹') ? hotel.price : `₹${hotel.price}`}</div>
+                    <div className="text-sm text-muted-foreground">per night</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

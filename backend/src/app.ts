@@ -20,6 +20,7 @@ import reviewRoutes from './modules/reviews/reviews.routes';
 import documentRoutes from './modules/documents/documents.routes';
 import alertRoutes from './modules/alerts/alerts.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health Check
 app.get('/health', (req, res) => res.status(200).json({ status: 'OK' }));

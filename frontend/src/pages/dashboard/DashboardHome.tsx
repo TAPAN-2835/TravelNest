@@ -33,7 +33,7 @@ const columns = [
   { id: "completed", title: "Completed", color: "bg-success" },
 ];
 
-function TripCard({ trip, isDragging }: { trip: Trip; isDragging?: boolean }) {
+function TripCard({ trip, isDragging, onDelete }: { trip: Trip; isDragging?: boolean; onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: trip.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -85,7 +85,7 @@ function TripCard({ trip, isDragging }: { trip: Trip; isDragging?: boolean }) {
           </div>
           <div className="flex items-center gap-1">
             <button className="p-1 text-muted-foreground hover:text-foreground"><Eye className="h-3.5 w-3.5" /></button>
-            <button className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => onDelete(trip.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         </div>
       </motion.div>
@@ -174,6 +174,16 @@ export default function DashboardHome() {
 
   const handleDragEnd = () => setActiveId(null);
 
+  const handleDeleteTrip = async (id: string) => {
+    try {
+      const { tripsApi } = await import("@/api/trips");
+      await tripsApi.deleteTrip(id);
+      fetchTrips();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const activeTrip = activeId
     ? Object.values(trips).flat().find((t: any) => t.id === activeId)
     : null;
@@ -242,7 +252,7 @@ export default function DashboardHome() {
                 <SortableContext items={trips[col.id]?.map((t) => t.id) || []} strategy={verticalListSortingStrategy}>
                   <div className="space-y-3 min-h-[120px] p-2 rounded-xl border-2 border-dashed border-transparent hover:border-border transition-colors">
                     {trips[col.id]?.map((trip) => (
-                      <TripCard key={trip.id} trip={trip} isDragging={trip.id === activeId} />
+                      <TripCard key={trip.id} trip={trip} isDragging={trip.id === activeId} onDelete={handleDeleteTrip} />
                     ))}
                   </div>
                 </SortableContext>
