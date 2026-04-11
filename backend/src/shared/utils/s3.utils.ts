@@ -9,11 +9,6 @@ export const generateUploadUrl = async (userId: string, fileName: string, fileTy
     Bucket: process.env.AWS_S3_BUCKET!,
     Key: s3Key,
     ContentType: fileType,
-    Metadata: { 
-      'user-id': userId, 
-      'document-type': documentType,
-      'processed': 'false' 
-    },
   });
 
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });

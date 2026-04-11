@@ -22,7 +22,12 @@ export class DocumentsService {
       },
     });
 
-    return { uploadUrl, s3Key, documentId: document.id };
+    return { 
+      presignedUrl: uploadUrl, 
+      fileUrl: document.s3Url,
+      s3Key, 
+      documentId: document.id 
+    };
   }
 
   static async confirmUpload(userId: string, documentId: string, fileSize: number) {
@@ -33,7 +38,10 @@ export class DocumentsService {
   }
 
   static async getAll(userId: string, tripId?: string, type?: any) {
-    const where: any = { userId };
+    const where: any = { 
+      userId,
+      fileSize: { gt: 0 } // Only return documents that have been successfully uploaded and confirmed
+    };
     if (tripId) where.tripId = tripId;
     if (type) where.type = type;
 

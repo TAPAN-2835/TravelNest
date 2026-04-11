@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Upload, Shield, AlertTriangle, CheckCircle, Eye, Loader2, Trash2, Calendar } from "lucide-react";
+import { FileText, Upload, Shield, AlertTriangle, CheckCircle, Eye, Loader2, Trash2, Calendar, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { useAuth } from "@/hooks/auth/useAuth";
 
 const statusConfig = {
   valid: { label: "Valid", color: "bg-success/10 text-success", icon: CheckCircle },
@@ -23,10 +32,21 @@ const statusConfig = {
   expired: { label: "Expired", color: "bg-destructive/10 text-destructive", icon: AlertTriangle },
 };
 
+const DOC_TYPES = [
+  { value: "PASSPORT", label: "Passport" },
+  { value: "VISA", label: "Visa" },
+  { value: "TICKET", label: "Ticket" },
+  { value: "INSURANCE", label: "Insurance" },
+  { value: "HOTEL_VOUCHER", label: "Hotel Voucher" },
+  { value: "OTHER", label: "Other" },
+];
+
 export default function DocumentVault() {
+  const { user } = useAuth();
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState("OTHER");
   const [expiryDate, setExpiryDate] = useState(new Date(Date.now() + 31536000000).toISOString().split('T')[0]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,31 +69,54 @@ export default function DocumentVault() {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     setUploading(true);
+    const loadingToast = toast.loading("Preparing upload...");
+    
     try {
       const { documentApi } = await import("@/api/documents");
-      const { data: { uploadUrl, key } } = await documentApi.getUploadUrl(file.name, file.type);
       
-      await fetch(uploadUrl, {
+      // 1. Get Presigned URL and Document Metadata entry
+      const { data: { presignedUrl, documentId } } = await documentApi.getUploadUrl(
+        file.name, 
+        file.type, 
+        docType
+      );
+      
+      toast.loading("Uploading to secure storage...", { id: loadingToast });
+
+      // 2. Direct Upload to S3
+      const uploadRes = await fetch(presignedUrl, {
         method: "PUT",
         body: file,
-        headers: { "Content-Type": file.type },
+        mode: "cors",
+        credentials: "omit",
+        headers: { 
+          "Content-Type": file.type,
+        },
       });
 
-      await documentApi.saveDocumentMetadata({
-        name: file.name,
-        type: file.name.split('.').pop()?.toUpperCase() || "FILE",
-        s3Key: key,
-        expiryDate: new Date(expiryDate).toISOString(),
-      });
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error("S3 Upload Failure Detail:", {
+          status: uploadRes.status,
+          statusText: uploadRes.statusText,
+          body: errorText
+        });
+        throw new Error(`S3 Upload failed (${uploadRes.status}): ${uploadRes.statusText}`);
+      }
 
-      toast.success("Document uploaded successfully");
+      toast.loading("Finalizing document...", { id: loadingToast });
+
+      // 3. Confirm Upload with Backend
+      await documentApi.confirmUpload(documentId, file.size);
+
+      toast.success("Document uploaded successfully", { id: loadingToast });
       fetchDocs();
     } catch (err) {
-      console.error(err);
-      toast.error("Upload failed");
+      console.error("Document vault error:", err);
+      toast.error("Upload failed. Check S3 CORS or network connection.", { id: loadingToast });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -104,13 +147,27 @@ export default function DocumentVault() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Document Vault</h2>
           <p className="text-sm text-muted-foreground mt-1">Store and manage your travel documents securely</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+           <div className="flex flex-col gap-1">
+             <Label htmlFor="docType" className="text-[10px] uppercase font-bold text-muted-foreground">Type</Label>
+             <Select value={docType} onValueChange={setDocType}>
+                <SelectTrigger id="docType" className="h-9 w-32 text-xs">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOC_TYPES.map(type => (
+                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+             </Select>
+           </div>
+           
            <div className="flex flex-col gap-1">
              <Label htmlFor="expiry" className="text-[10px] uppercase font-bold text-muted-foreground">Expiry Date</Label>
              <Input 
@@ -122,7 +179,7 @@ export default function DocumentVault() {
              />
            </div>
            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-           <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="rounded-lg bg-primary text-primary-foreground h-11 mt-auto">
+           <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="rounded-lg bg-primary text-primary-foreground h-11">
              {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
              {uploading ? "Uploading..." : "Upload File"}
            </Button>
@@ -181,7 +238,7 @@ export default function DocumentVault() {
                   
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
-                      onClick={() => window.open(doc.s3Key? (import.meta.env.VITE_CDN_URL ? `${import.meta.env.VITE_CDN_URL}/${doc.s3Key}` : '#') : '#')} 
+                      onClick={() => window.open(doc.downloadUrl || doc.s3Url, "_blank")} 
                       variant="outline" size="sm" className="text-xs h-8"
                     >
                       <Eye className="h-3.5 w-3.5 mr-2" /> View

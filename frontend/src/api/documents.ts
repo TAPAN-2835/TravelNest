@@ -7,10 +7,17 @@ export const documentApi = {
     return res.data;
   },
   getUploadUrl: async (fileName: string, fileType: string, documentType: string) => {
-    const res = await api.post<ApiResponse<{ uploadUrl: string; key: string }>>('/documents/upload-url', {
+    const res = await api.post<ApiResponse<{ presignedUrl: string; fileUrl: string; documentId: string }>>('/documents/upload-url', {
       fileName,
       fileType,
       documentType,
+    });
+    return res.data;
+  },
+  confirmUpload: async (documentId: string, fileSize: number) => {
+    const res = await api.post<ApiResponse<any>>('/documents/confirm-upload', {
+      documentId,
+      fileSize,
     });
     return res.data;
   },
