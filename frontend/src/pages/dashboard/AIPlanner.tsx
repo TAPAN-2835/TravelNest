@@ -47,23 +47,37 @@ export default function AIPlanner() {
   const [groupSize, setGroupSize] = useState(2);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showItinerary, setShowItinerary] = useState(false);
-  // Initialize to "1" so it matches String(day.day) === "1" for Day 1
   const [expandedDay, setExpandedDay] = useState<string | null>("1");
   const [itinerary, setItinerary] = useState<any>(null);
   const [destination, setDestination] = useState("Bangalore, India");
+  const [dateRange, setDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0]
+  });
+  const [error, setError] = useState<string | null>(null);
+  
   const navigate = useNavigate();
 
   const toggleStyle = (style: string) => {
     setSelectedStyles((prev) => prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style]);
   };
 
+  const calculateDays = () => {
+    const start = new Date(dateRange.start);
+    const end = new Date(dateRange.end);
+    const diff = end.getTime() - start.getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 3600 * 24)));
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setError(null);
     try {
+      const days = calculateDays();
       const { aiApi } = await import("@/api/ai");
       const { data } = await aiApi.generateItinerary({
         destination,
-        days: 3,
+        days,
         budget: budget[0],
         interests: selectedStyles,
         countryPreference: "india-first",
@@ -73,8 +87,8 @@ export default function AIPlanner() {
       toast.success("Itinerary generated successfully! ✨");
     } catch (err) {
       console.error(err);
-      toast.error("AI Service busy. Using fallback itinerary.");
-      // Automatic fallback handled by backend or shown here
+      setError("AI Service is temporarily unavailable. Using fallback.");
+      toast.error("AI Generation failed.");
     } finally {
       setIsGenerating(false);
     }
@@ -86,22 +100,21 @@ export default function AIPlanner() {
       const { tripsApi } = await import("@/api/trips");
       const { destinationsApi } = await import("@/api/destinations");
 
-      // Resolve a real destination ID for UUID validation
       const destinationsRes = await destinationsApi.getDestinations();
-      const allDestinations = destinationsRes.data;
+      const allDestinations = (destinationsRes as any).destinations || destinationsRes.data || [];
 
-      const matchedDest = allDestinations.find(d =>
+      const matchedDest = allDestinations.find((d: any) =>
         destination.toLowerCase().includes(d.name.toLowerCase()) ||
         d.name.toLowerCase().includes(destination.toLowerCase())
       );
 
       const destinationId = matchedDest?.id || allDestinations[0]?.id || "550e8400-e29b-41d4-a716-446655440000";
 
-      const newTrip = await tripsApi.saveGeneratedTrip({
+      await tripsApi.saveGeneratedTrip({
         title: `Trip to ${destination}`,
         destinationId,
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 3 * 86400000).toISOString(),
+        startDate: new Date(dateRange.start).toISOString(),
+        endDate: new Date(dateRange.end).toISOString(),
         totalBudget: budget[0],
         travelStyle: selectedStyles[0] || "Culture",
         itineraryData: itinerary,
@@ -114,8 +127,10 @@ export default function AIPlanner() {
     }
   };
 
+  const dayCount = calculateDays();
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 pb-20">
       <div>
         <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" /> AI Itinerary Generator
@@ -138,14 +153,33 @@ export default function AIPlanner() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label>Travel Dates</Label>
-            <Input type="text" placeholder="Select dates" className="h-11 rounded-lg" defaultValue="Apr 10 – Apr 13, 2026" />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input 
+                type="date" 
+                className="h-11 rounded-lg" 
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Input 
+                type="date" 
+                className="h-11 rounded-lg" 
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              />
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Budget: {formatCurrency(budget[0])}</Label>
+          <div className="flex justify-between items-center">
+            <Label>Budget: {formatCurrency(budget[0])}</Label>
+            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">{dayCount} Days</span>
+          </div>
           <Slider value={budget} onValueChange={setBudget} min={10000} max={500000} step={5000} className="py-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>₹10,000</span>
@@ -154,7 +188,7 @@ export default function AIPlanner() {
         </div>
 
         <div className="space-y-2">
-          <Label>Trip Style</Label>
+          <Label>Trip Style (Select multiple)</Label>
           <div className="flex flex-wrap gap-2">
             {tripStyles.map((style) => (
               <button
@@ -183,16 +217,25 @@ export default function AIPlanner() {
           </div>
         </div>
 
-        <Button onClick={handleGenerate} disabled={isGenerating} className="w-full h-12 rounded-lg bg-primary text-primary-foreground text-base">
+        {error && (
+          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
+            <div className="mt-0.5">⚠️</div>
+            <div>
+               <p className="font-semibold">Generation Error</p>
+               <p className="opacity-80">{error}</p>
+               <Button onClick={handleGenerate} variant="link" className="p-0 h-auto text-destructive underline mt-2">Try Again</Button>
+            </div>
+          </div>
+        )}
+
+        <Button onClick={handleGenerate} disabled={isGenerating} className="w-full h-12 rounded-lg bg-primary text-primary-foreground text-base shadow-lg shadow-primary/20">
           {isGenerating ? (
             <span className="flex items-center gap-2">
-              <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                ✨
-              </motion.span>
-              Crafting your perfect trip...
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Crafting your {dayCount}-day trip...
             </span>
           ) : (
-            "Generate Itinerary ✨"
+            `Generate ${dayCount}-Day Itinerary ✨`
           )}
         </Button>
       </div>
@@ -207,9 +250,17 @@ export default function AIPlanner() {
           >
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-semibold text-foreground">Your AI-Generated Itinerary</h3>
-              <Button onClick={handleSave} variant="outline" size="sm" className="gap-2">
-                <Save className="h-4 w-4" /> Save to Trips
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowItinerary(false)} variant="ghost" size="sm">Reset</Button>
+                <Button 
+                  onClick={handleSave} 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Save className="h-4 w-4" /> Save to Dashboard
+                </Button>
+              </div>
             </div>
             <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 mb-6">
               <div className="flex justify-between items-center text-sm">

@@ -1,31 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Heart, Search, Sparkles } from "lucide-react";
+import { Heart, Search, Sparkles, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-const filters = ["Budget", "Trending", "Beach", "Mountains", "Culture", "Adventure"];
-
-const destinations = [
-  { city: "Udaipur", country: "India", cost: "₹45,000", score: 98, img: "photo-1591027480007-a42f6ef886c3", h: 400 },
-  { city: "Goa", country: "India", cost: "₹35,000", score: 96, img: "photo-1512343879784-a960bf40e7f2", h: 320 },
-  { city: "Manali", country: "India", cost: "₹28,000", score: 94, img: "photo-1626621341517-bbf3d9990a23", h: 360 },
-  { city: "Kerala", country: "India", cost: "₹55,000", score: 92, img: "photo-1602216056096-3b40cc0c9944", h: 380 },
-  { city: "Jaipur", country: "India", cost: "₹30,000", score: 95, img: "photo-1599661046289-e31897846e41", h: 340 },
-  { city: "Bali", country: "Indonesia", cost: "₹65,000", score: 92, img: "photo-1537996194471-e657df975ab4", h: 420 },
-  { city: "Kyoto", country: "Japan", cost: "₹1,10,000", score: 94, img: "photo-1493976040374-85c8e12f0c0e", h: 300 },
-  { city: "Reykjavik", country: "Iceland", cost: "₹1,80,000", score: 91, img: "photo-1504829857797-ddff29c27927", h: 370 },
-  { city: "Bangkok", country: "Thailand", cost: "₹35,000", score: 87, img: "photo-1508009603885-50cf7c579365", h: 330 },
-];
+const filters = ["Trending", "Budget", "Beach", "Mountains", "Culture", "Adventure"];
 
 export default function Discover() {
   const [activeFilter, setActiveFilter] = useState("Trending");
+  const [searchQuery, setSearchQuery] = useState("");
   const [liked, setLiked] = useState<string[]>([]);
+  const [destinations, setDestinations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
-  const toggleLike = (city: string) => {
-    setLiked((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
+
+  const fetchDestinations = async () => {
+    try {
+      setLoading(true);
+      const { destinationsApi } = await import("@/api/destinations");
+      const response = await destinationsApi.getDestinations();
+      const data = (response as any).destinations || (response as any).data?.destinations || response.data || [];
+      setDestinations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load destinations");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchDestinations();
+  }, []);
+
+  const toggleLike = (id: string) => {
+    setLiked((prev) => prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]);
+  };
+
+  const filteredDestinations = destinations.filter(dest => {
+    const matchesSearch = dest.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          dest.country.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeFilter === "Trending") return matchesSearch;
+    if (activeFilter === "Budget") return matchesSearch && dest.avgCostPerDay < 5000;
+    
+    const matchesCategory = dest.tags?.some((t: string) => t.toLowerCase() === activeFilter.toLowerCase()) || 
+                            dest.description?.toLowerCase().includes(activeFilter.toLowerCase());
+                            
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="space-y-6">
@@ -37,7 +63,12 @@ export default function Discover() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search destinations..." className="pl-9 h-10 rounded-lg" />
+          <Input 
+            placeholder="Search destinations..." 
+            className="pl-9 h-10 rounded-lg"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         <div className="flex gap-2 flex-wrap">
           {filters.map((f) => (
@@ -55,65 +86,75 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Masonry Grid */}
-      <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-        {destinations.map((dest, i) => (
-          <motion.div
-            key={dest.city}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05, duration: 0.4 }}
-            whileHover={{ y: -5 }}
-            whileTap={{ scale: 0.98 }}
-            className="break-inside-avoid group cursor-pointer"
-          >
-            <div className="relative rounded-2xl overflow-hidden bg-card border border-border shadow-md hover:shadow-xl transition-shadow duration-300">
-              <img
-                src={`https://images.unsplash.com/${dest.img}?w=400&h=${dest.h}&fit=crop`}
-                alt={dest.city}
-                className="w-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500"
-                style={{ height: dest.h }}
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+             <div key={i} className="aspect-[3/4] rounded-2xl overflow-hidden relative border border-border">
+                <Skeleton className="w-full h-full" />
+                <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+             </div>
+          ))}
+        </div>
+      ) : filteredDestinations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <MapPin className="h-12 w-12 text-muted-foreground/20 mb-4" />
+          <h3 className="text-lg font-medium text-foreground">No destinations found</h3>
+          <p className="text-sm text-muted-foreground">Try adjusting your search or filters</p>
+        </div>
+      ) : (
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+          {filteredDestinations.map((dest, i) => (
+            <motion.div
+              key={dest.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
+              whileHover={{ y: -5 }}
+              className="break-inside-avoid group cursor-pointer"
+            >
+              <div className="relative rounded-2xl overflow-hidden bg-card border border-border shadow-md hover:shadow-xl transition-shadow duration-300">
+                <img
+                  src={dest.imageUrl || `https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=400&fit=crop`}
+                  alt={dest.name}
+                  className="w-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 min-h-[280px]"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
 
-              {/* Badges */}
-              <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-                <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full shadow-lg">
-                  {dest.score}% MATCH
-                </span>
-                {i < 3 && (
-                  <span className="text-[10px] font-bold bg-accent text-accent-foreground px-2 py-0.5 rounded-full shadow-lg">
-                    TRENDING
+                <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+                  <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full shadow-lg">
+                    {dest.rating ? `${Math.round(dest.rating * 20)}% MATCH` : 'HIGH MATCH'}
                   </span>
-                )}
-              </div>
+                </div>
 
-              {/* Heart */}
-              <button
-                onClick={() => toggleLike(dest.city)}
-                className="absolute top-3 right-3 p-2 rounded-full bg-card/80 backdrop-blur-sm hover:bg-card transition-colors"
-              >
-                <Heart className={`h-4 w-4 ${liked.includes(dest.city) ? "fill-destructive text-destructive" : "text-foreground"}`} />
-              </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleLike(dest.id); }}
+                  className="absolute top-3 right-3 p-2 rounded-full bg-card/80 backdrop-blur-sm hover:bg-card transition-colors"
+                >
+                  <Heart className={`h-4 w-4 ${liked.includes(dest.id) ? "fill-destructive text-destructive" : "text-foreground"}`} />
+                </button>
 
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h3 className="text-lg font-bold text-white">{dest.city}</h3>
-                <p className="text-sm text-white/80">{dest.country}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-white/70">Avg. cost: {dest.cost}</p>
-                  <button
-                    onClick={() => navigate("/dashboard/planner", { state: { destination: `${dest.city}, ${dest.country}` } })}
-                    className="flex items-center gap-1 text-[10px] font-bold text-white bg-white/20 hover:bg-white/30 backdrop-blur-md px-2 py-1 rounded-lg transition-colors border border-white/20"
-                  >
-                    <Sparkles className="h-3 w-3" /> PLAN
-                  </button>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="text-lg font-bold text-white">{dest.name}</h3>
+                  <p className="text-sm text-white/80">{dest.country}</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <p className="text-xs text-white/70 font-medium">Avg. cost: ₹{dest.avgCostPerDay?.toLocaleString('en-IN')}</p>
+                    <button
+                      onClick={() => navigate("/dashboard/planner", { state: { destination: `${dest.name}, ${dest.country}` } })}
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-white bg-white/20 hover:bg-white/40 backdrop-blur-md px-3 py-1.5 rounded-lg transition-colors border border-white/20"
+                    >
+                      <Sparkles className="h-3 w-3" /> PLAN
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
