@@ -77,43 +77,93 @@ export class TripsService {
   }
 
   static async saveGeneratedTrip(userId: string, data: any) {
+    const duration = data.days || 3;
+    const totalBudget = Number(data.totalBudget) || 0;
+    const destName = data.destination || data.itineraryData?.destination || "Unknown Destination";
+
+    // Step 1: Find or Create Destination (Prevent FK violation)
+    let destination = await prisma.destination.findFirst({
+      where: { name: { contains: destName.split(',')[0], mode: 'insensitive' } }
+    });
+
+    if (!destination) {
+      destination = await prisma.destination.create({
+        data: {
+          name: destName,
+          country: destName.split(',').slice(-1)[0]?.trim() || 'Unknown',
+          continent: 'Discovery',
+          description: `Custom planned trip to ${destName}`,
+          imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
+          avgCostPerDay: totalBudget / duration,
+          latitude: 0,
+          longitude: 0,
+          tags: ['Custom'],
+        }
+      });
+    }
+
+    // Step 2: Auto Budget Distribution Logic (40/20/20/20)
+    const breakdown = {
+      stay: Math.round(totalBudget * 0.40),
+      food: Math.round(totalBudget * 0.20),
+      travel: Math.round(totalBudget * 0.20),
+      activities: Math.round(totalBudget * 0.20)
+    };
+
     const trip = await prisma.trip.create({
       data: {
-        title: data.title,
-        destinationId: data.destinationId,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        totalBudget: data.totalBudget,
-        travelStyle: data.travelStyle,
+        title: data.title || `Trip to ${destName}`,
+        destinationId: destination.id,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        totalBudget,
+        travelStyle: data.travelStyle || 'General',
+        duration,
         userId,
+        itineraryData: data.itineraryData || {},
+        hotelData: data.hotelData || {},
+        budgetBreakdown: breakdown,
         budget: {
           create: {
-            totalAmount: data.totalBudget,
+            totalAmount: totalBudget,
             currency: data.currency || 'INR',
             userId,
+            expenses: {
+              create: [
+                { category: 'HOTELS', description: 'Budget for Stay (Auto-allocated)', amount: breakdown.stay, date: new Date(data.startDate) },
+                { category: 'FOOD', description: 'Budget for Food (Auto-allocated)', amount: breakdown.food, date: new Date(data.startDate) },
+                { category: 'TRANSPORT', description: 'Budget for Travel (Auto-allocated)', amount: breakdown.travel, date: new Date(data.startDate) },
+                { category: 'ACTIVITIES', description: 'Budget for Activities (Auto-allocated)', amount: breakdown.activities, date: new Date(data.startDate) },
+              ]
+            }
           },
         },
       },
       include: { destination: true }
     });
 
-    if (data.itineraryData) {
-      const ItineraryModel = (await import('../itinerary/itinerary.model')).default;
-      const itinerary = await ItineraryModel.create({
-        tripId: trip.id,
-        userId,
-        destination: data.itineraryData.destination,
-        duration: data.itineraryData.days?.length || 3,
-        days: data.itineraryData.days || [],
-        flights: data.itineraryData.flights || [],
-        hotels: data.itineraryData.hotels || [],
-        totalEstimatedCost: data.itineraryData.totalEstimatedCost || 0,
-        currency: 'INR',
-      });
-      await prisma.trip.update({
-        where: { id: trip.id },
-        data: { itineraryId: (itinerary as any)._id.toString() },
-      });
+    // If we have a legacy itinerary ID or need to create one, handle it
+    if (data.itineraryData && !trip.itineraryId) {
+       try {
+          const ItineraryModel = (await import('../itinerary/itinerary.model')).default;
+          const itinerary = await ItineraryModel.create({
+            tripId: trip.id,
+            userId,
+            destination: data.destination,
+            duration,
+            days: data.itineraryData.days || [],
+            flights: data.itineraryData.flights || [],
+            hotels: data.itineraryData.hotels || [],
+            totalEstimatedCost: totalBudget,
+            currency: 'INR',
+          });
+          await prisma.trip.update({
+            where: { id: trip.id },
+            data: { itineraryId: (itinerary as any)._id.toString() },
+          });
+       } catch (err) {
+          console.error('Failed to save to MongoDB, but Postgres record is safe:', err);
+       }
     }
 
     // Send async confirmation email

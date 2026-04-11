@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, MapPin, Calendar, Trash2, Eye, GripVertical, Plane, Globe, Wallet, Route, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,6 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  DragStartEvent,
-  DragEndEvent,
   DragOverEvent,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -29,6 +27,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useTrips } from "@/hooks/trips/useTrips";
 
 interface Trip {
   id: string;
@@ -100,14 +99,14 @@ function TripCard({ trip, isDragging, onDelete }: { trip: Trip; isDragging?: boo
           </div>
           <div className="flex items-center gap-1">
             <button 
-              onClick={() => navigate("/dashboard/planner", { state: { tripId: trip.id } })}
+              onClick={(e) => { e.stopPropagation(); navigate("/dashboard/planner", { state: { tripId: trip.id } }); }}
               className="p-1 text-muted-foreground hover:text-foreground"
             >
               <Eye className="h-3.5 w-3.5" />
             </button>
 
             <AlertDialog>
-              <AlertDialogTrigger asChild>
+              <AlertDialogTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <button className="p-1 text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -140,47 +139,28 @@ function TripCard({ trip, isDragging, onDelete }: { trip: Trip; isDragging?: boo
 export default function DashboardHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [trips, setTrips] = useState<Record<string, any>>({
-    planning: [],
-    upcoming: [],
-    completed: [],
-  });
-  const [loading, setLoading] = useState(true);
+  const { data: tripsArray = [], isLoading: loading, refetch } = useTrips();
 
-  const fetchTrips = async () => {
-    try {
-      const { tripsApi } = await import("@/api/trips");
-      const { data: responseData } = await tripsApi.getTrips() as any;
-      const tripsArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
-
-      const grouped = (tripsArray as any[]).reduce((acc: any, trip: any) => {
-        const status = trip.status.toLowerCase();
-        if (acc[status]) {
-          acc[status].push({
-            ...trip,
-            name: trip.title || trip.destinationId || "Untitled Trip",
-            dates: `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate).toLocaleDateString()}`,
-            progress: trip.itineraryId ? 100 : 25,
-            image: "photo-1540959733332-eab4deabeeaf",
-            members: trip.groupSize || 1,
-            totalBudget: trip.totalBudget || 0
-          });
-        }
-        return acc;
-      }, { planning: [], upcoming: [], completed: [] });
-
-      setTrips(grouped);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load trips");
-    } finally {
-      setLoading(false);
+  const grouped = tripsArray.reduce((acc: any, trip: any) => {
+    const status = (trip.status || 'planning').toLowerCase();
+    const destName = typeof trip.destination === 'object' ? trip.destination?.name : (trip.destination || "Unknown");
+    
+    if (acc[status]) {
+      acc[status].push({
+        ...trip,
+        name: trip.title || "Untitled Trip",
+        destination: destName,
+        dates: `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate).toLocaleDateString()}`,
+        progress: trip.itineraryId ? 100 : 25,
+        image: "photo-1540959733332-eab4deabeeaf",
+        members: trip.groupSize || 1,
+        totalBudget: trip.totalBudget || 0
+      });
     }
-  };
+    return acc;
+  }, { planning: [], upcoming: [], completed: [] });
 
-  useEffect(() => {
-    fetchTrips();
-  }, []);
+  const trips = grouped;
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -198,22 +178,13 @@ export default function DashboardHome() {
     const overCol = findColumn(String(over.id)) || String(over.id);
     if (!activeCol || activeCol === overCol || !['planning', 'upcoming', 'completed'].includes(overCol)) return;
 
-    setTrips((prev: any) => {
-      const trip = prev[activeCol].find((t: any) => t.id === String(active.id))!;
-      return {
-        ...prev,
-        [activeCol]: prev[activeCol].filter((t: any) => t.id !== String(active.id)),
-        [overCol]: [...(prev[overCol] || []), { ...trip, status: overCol.toUpperCase() }],
-      };
-    });
-
     try {
       const { tripsApi } = await import("@/api/trips");
       await tripsApi.updateTripStatus(String(active.id), overCol.toUpperCase());
       toast.success(`Trip moved to ${overCol}`);
+      refetch();
     } catch (err) {
       toast.error("Failed to update trip status");
-      fetchTrips();
     }
   };
 
@@ -222,14 +193,14 @@ export default function DashboardHome() {
       const { tripsApi } = await import("@/api/trips");
       await tripsApi.deleteTrip(id);
       toast.success("Trip deleted successfully");
-      fetchTrips();
+      refetch();
     } catch (err) {
       console.error(err);
       toast.error("Failed to delete trip");
     }
   };
 
-  const allTripsArray = Object.values(trips).flat();
+  const allTripsArray = Object.values(trips).flat() as any[];
   const totalTrips = allTripsArray.length;
   const totalBudget = allTripsArray.reduce((acc, trip) => acc + (trip.totalBudget || 0), 0);
   const uniqueDestinations = new Set(allTripsArray.map(t => t.destination)).size;
@@ -241,11 +212,20 @@ export default function DashboardHome() {
     { label: "Total Value", value: `₹${totalBudget.toLocaleString('en-IN')}`, icon: Wallet, color: "bg-success/10 text-success" },
   ];
 
+  if (loading && tripsArray.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
+        <p className="text-sm text-muted-foreground mt-4 font-medium">Loading your travel pipeline...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome */}
       <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-6 border border-border">
-        <h2 className="text-xl font-semibold text-foreground">Good morning, {user?.name?.split(' ')[0] || 'Explorer'} ✦</h2>
+        <h2 className="text-xl font-semibold text-foreground">Good day, {user?.name?.split(' ')[0] || 'Explorer'} ✦</h2>
         <p className="text-sm text-muted-foreground mt-1">
           {totalTrips > 0 
             ? `You have ${trips.upcoming?.length || 0} upcoming trips. Ready for the next adventure?`
@@ -294,7 +274,7 @@ export default function DashboardHome() {
 
       {/* Kanban */}
       <div>
-        <h3 className="text-lg font-semibold text-foreground mb-4">Your Travel Pipeline</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4 font-outfit">Your Travel Pipeline</h3>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -309,9 +289,9 @@ export default function DashboardHome() {
                   <span className="text-xs text-muted-foreground">({loading ? '...' : (trips[col.id]?.length || 0)})</span>
                 </div>
                 
-                <SortableContext items={trips[col.id]?.map((t) => t.id) || []} strategy={verticalListSortingStrategy}>
+                <SortableContext items={trips[col.id]?.map((t: any) => t.id) || []} strategy={verticalListSortingStrategy}>
                   <div className="space-y-3 min-h-[120px] p-2 rounded-xl border-2 border-dashed border-transparent hover:border-border transition-colors">
-                    {loading ? (
+                    {loading && tripsArray.length === 0 ? (
                       Array.of(1, 2).map((i) => (
                         <div key={i} className="bg-card rounded-xl border border-border p-4 space-y-3">
                            <div className="flex gap-3">
@@ -325,12 +305,12 @@ export default function DashboardHome() {
                         </div>
                       ))
                     ) : trips[col.id]?.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-xl border border-dashed">
+                      <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-xl border border-dashed border-border/50">
                         <Route className="h-8 w-8 text-muted-foreground/30 mb-2" />
                         <p className="text-xs text-muted-foreground">No trips here</p>
                       </div>
                     ) : (
-                      trips[col.id]?.map((trip) => (
+                      trips[col.id]?.map((trip: any) => (
                         <TripCard key={trip.id} trip={trip} onDelete={handleDeleteTrip} />
                       ))
                     )}

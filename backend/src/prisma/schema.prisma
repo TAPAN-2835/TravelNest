@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -74,6 +75,10 @@ model Trip {
   travelStyle     String
   coverImage      String?
   notes           String?
+  itineraryData   Json?
+  hotelData       Json?
+  budgetBreakdown Json?
+  duration        Int         @default(1)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   budget          Budget?

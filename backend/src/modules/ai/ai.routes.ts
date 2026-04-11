@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { planTrip } from './ai.controller';
+import { authenticate } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-// Assuming user must be logged in to plan a trip, but can make optional if needed.
-// router.use(requireAuth); 
+router.use(authenticate);
 
 router.post('/plan-trip', planTrip);
 

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 load_dotenv()
 
+from agent.orchestrator import TravelAgent
 from logger import get_logger
 
 logger = get_logger("ai-service")

@@ -5,7 +5,7 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 export const planTrip = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { destination, budget, days, preferences, countryPreference } = req.body;
+        const { destination, budget, days, interests, preferences, countryPreference } = req.body;
 
         if (!destination || String(destination).trim() === '') {
             return res.status(400).json({ success: false, message: 'Destination is required' });
@@ -22,7 +22,7 @@ export const planTrip = async (req: Request, res: Response, next: NextFunction) 
                 destination: String(destination).trim(),
                 budget: Number(budget) || 50000,
                 days: Number(days) || 3,
-                interests: Array.isArray(preferences) ? preferences : ["sightseeing"],
+                interests: Array.isArray(interests) ? interests : (Array.isArray(preferences) ? preferences : ["sightseeing"]),
                 countryPreference: countryPreference || "india-first"
             },
             { timeout: 120000 } // 2 minutes — AI generation takes time

@@ -18,6 +18,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     req.user = decoded;
     next();
   } catch (error) {
+    console.error('JWT AUTH ERROR:', error);
     next(new AppError('Invalid or expired token', 401));
   }
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Loader2, Wallet, Calendar, Tag, FileText, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,12 +28,22 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#94a3b8", "#8b5cf6"
 
 const CATEGORIES = ["Flights", "Hotels", "Food", "Activities", "Shopping", "Transport", "Misc"];
 
+import { useTrips } from "@/hooks/trips/useTrips";
+import { useBudget } from "@/hooks/budget/useBudget";
+
 export default function BudgetTracker() {
-  const [loading, setLoading] = useState(true);
-  const [fetchingBudget, setFetchingBudget] = useState(false);
-  const [trips, setTrips] = useState<any[]>([]);
+  const { data: trips = [], isLoading: loadingTrips } = useTrips();
   const [selectedTripId, setSelectedTripId] = useState<string>("");
-  const [budgetData, setBudgetData] = useState<any>(null);
+  
+  // Set default selected trip
+  useEffect(() => {
+    if (trips.length > 0 && !selectedTripId) {
+      setSelectedTripId(trips[0].id);
+    }
+  }, [trips, selectedTripId]);
+
+  const { data: budgetData, isLoading: fetchingBudget } = useBudget(selectedTripId);
+  const loading = loadingTrips;
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({
     category: "Food",
@@ -41,47 +52,7 @@ export default function BudgetTracker() {
     date: new Date().toISOString().split('T')[0]
   });
 
-  const fetchTrips = async () => {
-    try {
-      const { tripsApi } = await import("@/api/trips");
-      const { data } = await tripsApi.getTrips() as any;
-      const tripsArray = Array.isArray(data) ? data : (data?.data || []);
-      setTrips(tripsArray);
-      if (tripsArray.length > 0) {
-        setSelectedTripId(tripsArray[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load trips");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchBudget = async (tripId: string) => {
-    if (!tripId) return;
-    setFetchingBudget(true);
-    try {
-      const { budgetApi } = await import("@/api/budget");
-      const { data } = await budgetApi.getBudget(tripId);
-      setBudgetData(data);
-    } catch (err) {
-      console.error(err);
-      setBudgetData(null);
-    } finally {
-      setFetchingBudget(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
-  useEffect(() => {
-    if (selectedTripId) {
-      fetchBudget(selectedTripId);
-    }
-  }, [selectedTripId]);
+  const queryClient = useQueryClient();
 
   const handleAddExpense = async () => {
     if (!newExpense.amount || !newExpense.description) {
@@ -99,7 +70,7 @@ export default function BudgetTracker() {
       toast.success("Expense added successfully");
       setIsAddOpen(false);
       setNewExpense({ category: "Food", amount: "", description: "", date: new Date().toISOString().split('T')[0] });
-      fetchBudget(selectedTripId);
+      queryClient.invalidateQueries({ queryKey: ["budget", selectedTripId] });
     } catch (err) {
       toast.error("Failed to add expense");
     }
@@ -110,7 +81,7 @@ export default function BudgetTracker() {
       const { budgetApi } = await import("@/api/budget");
       await budgetApi.deleteExpense(selectedTripId, expenseId);
       toast.success("Expense deleted");
-      fetchBudget(selectedTripId);
+      queryClient.invalidateQueries({ queryKey: ["budget", selectedTripId] });
     } catch (err) {
       toast.error("Failed to delete expense");
     }

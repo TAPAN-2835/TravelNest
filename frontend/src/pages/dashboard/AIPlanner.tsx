@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, MapPin, Users, ChevronDown, ChevronUp, Clock, IndianRupee, Save } from "lucide-react";
+import { Sparkles, MapPin, Users, ChevronDown, ChevronUp, Clock, IndianRupee, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useSaveTrip } from "@/hooks/trips/useTrips";
 
 const tripStyles = ["🏖 Beach", "🏔 Adventure", "🎭 Culture", "🛍 Shopping", "🍽 Food", "💆 Wellness"];
 
@@ -94,40 +95,25 @@ export default function AIPlanner() {
     }
   };
 
-  const handleSave = async () => {
-    toast.info("Saving trip to your dashboard...");
-    try {
-      const { tripsApi } = await import("@/api/trips");
-      const { destinationsApi } = await import("@/api/destinations");
-
-      const destinationsRes = await destinationsApi.getDestinations();
-      const allDestinations = (destinationsRes as any).destinations || destinationsRes.data || [];
-
-      const matchedDest = allDestinations.find((d: any) =>
-        destination.toLowerCase().includes(d.name.toLowerCase()) ||
-        d.name.toLowerCase().includes(destination.toLowerCase())
-      );
-
-      const destinationId = matchedDest?.id || allDestinations[0]?.id || "550e8400-e29b-41d4-a716-446655440000";
-
-      await tripsApi.saveGeneratedTrip({
-        title: `Trip to ${destination}`,
-        destinationId,
-        startDate: new Date(dateRange.start).toISOString(),
-        endDate: new Date(dateRange.end).toISOString(),
-        totalBudget: budget[0],
-        travelStyle: selectedStyles[0] || "Culture",
-        itineraryData: itinerary,
-      });
-
-      toast.success("Trip saved! Redirecting...");
-      setTimeout(() => navigate("/dashboard"), 1500);
-    } catch (err) {
-      toast.error("Failed to save trip. Please try again.");
-    }
-  };
-
+  const saveMutation = useSaveTrip();
   const dayCount = calculateDays();
+
+  const handleSave = async () => {
+    saveMutation.mutate({
+      title: `Trip to ${destination}`,
+      destination: destination,
+      startDate: new Date(dateRange.start).toISOString(),
+      endDate: new Date(dateRange.end).toISOString(),
+      days: dayCount,
+      totalBudget: budget[0],
+      travelStyle: selectedStyles[0] || "Culture",
+      itineraryData: itinerary,
+    }, {
+      onSuccess: () => {
+        setTimeout(() => navigate("/dashboard"), 1500);
+      }
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">

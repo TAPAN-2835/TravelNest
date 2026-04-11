@@ -1,7 +1,9 @@
 
 services:
   nginx:
+    container_name: travelnest-nginx
     image: nginx:alpine
+    profiles: ["apps"]
     ports:
       - "80:80"
     volumes:
@@ -13,13 +15,18 @@ services:
     restart: unless-stopped
 
   backend:
+    container_name: travelnest-backend
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    # ports: ["5000:5000"] # Removed, accessible via Nginx
+    profiles: ["apps"]
     environment:
       - NODE_ENV=production
+      - FRONTEND_URL=http://localhost
       - AI_SERVICE_URL=http://ai-service:8000
+      - DATABASE_URL=postgresql://travelnest_user:travelnest_pass@postgres:5432/travelnest
+      - MONGODB_URI=mongodb://mongodb:27017/travelnest
+      - REDIS_URL=redis://redis:6379
     env_file: .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
@@ -36,17 +43,24 @@ services:
     restart: unless-stopped
 
   frontend:
+    container_name: travelnest-frontend
     build: 
       context: ./frontend
       dockerfile: Dockerfile
+    profiles: ["apps"]
     depends_on:
       - backend
     restart: unless-stopped
 
   ai-service:
+    container_name: travelnest-ai
     build: 
       context: ./ai-service
       dockerfile: Dockerfile
+    profiles: ["apps"]
+    environment:
+      - AI_SERVICE_URL=http://localhost:8000
+      - AWS_S3_BUCKET=travelnest-documents
     env_file: .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
