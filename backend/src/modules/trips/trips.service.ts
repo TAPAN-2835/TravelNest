@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../shared/utils/response.utils';
 import { io } from '../../config/socket';
+import { sendTripConfirmation } from '../../shared/utils/ses.utils';
 
 export class TripsService {
   static async getAll(userId: string, query: any) {
@@ -34,7 +35,7 @@ export class TripsService {
   }
 
   static async create(userId: string, data: any) {
-    return await prisma.trip.create({
+    const trip = await prisma.trip.create({
       data: {
         title: data.title,
         destinationId: data.destinationId,
@@ -55,7 +56,24 @@ export class TripsService {
           },
         },
       },
+      include: { destination: true }
     });
+
+    // Send async confirmation email
+    prisma.user.findUnique({ where: { id: userId } }).then(user => {
+      if (user) {
+        sendTripConfirmation(user.email, user.name, {
+          title: trip.title,
+          destination: trip.destination.name,
+          startDate: trip.startDate.toDateString(),
+          endDate: trip.endDate.toDateString(),
+          totalBudget: trip.totalBudget,
+          currency: trip.currency
+        });
+      }
+    });
+
+    return trip;
   }
 
   static async saveGeneratedTrip(userId: string, data: any) {
@@ -76,6 +94,7 @@ export class TripsService {
           },
         },
       },
+      include: { destination: true }
     });
 
     if (data.itineraryData) {
@@ -96,6 +115,20 @@ export class TripsService {
         data: { itineraryId: (itinerary as any)._id.toString() },
       });
     }
+
+    // Send async confirmation email
+    prisma.user.findUnique({ where: { id: userId } }).then(user => {
+      if (user) {
+        sendTripConfirmation(user.email, user.name, {
+          title: trip.title,
+          destination: trip.destination.name,
+          startDate: trip.startDate.toDateString(),
+          endDate: trip.endDate.toDateString(),
+          totalBudget: trip.totalBudget,
+          currency: trip.currency
+        });
+      }
+    });
 
     return trip;
   }

@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   nginx:
@@ -28,8 +27,6 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
-      postgres:
-        condition: service_healthy
       mongodb:
         condition: service_started
       redis:
@@ -42,7 +39,6 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
-    # ports: ["3000:80"] # Removed, accessible via Nginx
     depends_on:
       - backend
     restart: unless-stopped
@@ -51,7 +47,6 @@ services:
     build: 
       context: ./ai-service
       dockerfile: Dockerfile
-    # ports: ["8000:8000"] # Removed, accessible via Nginx
     env_file: .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -60,6 +55,19 @@ services:
       retries: 3
     restart: unless-stopped
 
+  mongodb:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    ports: ["27017:27017"]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    restart: unless-stopped
+
+  # Local Development Database (Replace with RDS for Production)
   postgres:
     image: postgres:15-alpine
     environment:
@@ -74,18 +82,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
-
-  mongodb:
-    image: mongo:7
-    volumes:
-      - mongo_data:/data/db
-    ports: ["27017:27017"]
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
     restart: unless-stopped
 
 volumes:
