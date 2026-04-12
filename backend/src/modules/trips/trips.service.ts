@@ -201,23 +201,23 @@ export class TripsService {
        }
     }
 
-    // Send async confirmation email via SQS Event
+    // Fire-and-forget: send notification via SQS → Lambda → SES
     prisma.user.findUnique({ where: { id: userId } }).then(async (user) => {
       if (user) {
-        // Send generic message event into the event-bus (SQS)
         await sendMessageToQueue({
-          type: "TRIP_CREATED",
-          userEmail: user.email,
-          tripDetails: {
-             title: trip.title,
-             destination: trip.destination.name,
-             startDate: trip.startDate.toDateString(),
-             endDate: trip.endDate.toDateString(),
-             totalBudget: trip.totalBudget,
-             currency: trip.currency
-          }
+          type: "EMAIL",
+          to: user.email,
+          subject: `Trip Confirmed ✈️ — ${trip.title}`,
+          message:
+            `Hi ${user.name},\n\n` +
+            `Your trip to ${trip.destination.name} has been successfully planned!\n\n` +
+            `Dates: ${trip.startDate.toDateString()} → ${trip.endDate.toDateString()}\n` +
+            `Budget: ${trip.currency} ${trip.totalBudget.toLocaleString()}\n\n` +
+            `Open TravelNest to view your full itinerary.\n\nSafe travels! 🌍`,
         });
       }
+    }).catch((err) => {
+      console.error('[SQS] Failed to dispatch trip notification:', err);
     });
 
     return trip;

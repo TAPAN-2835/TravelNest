@@ -1,19 +1,27 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import logger from './logger';
 
-// Ensure region and credentials exist (will fall back to IAM Roles in EC2 natively)
 const sqsClient = new SQSClient({
   region: process.env.AWS_REGION || 'ap-south-1',
 });
 
 /**
- * Dispatches a message to an SQS Queue for asynchronous processing.
+ * Send a notification event to SQS.
+ * Lambda picks it up and sends the email via SES.
+ *
+ * Payload shape:
+ *   { type: "EMAIL", to: string, subject: string, message: string }
  */
-export const sendMessageToQueue = async (payload: any): Promise<boolean> => {
+export const sendMessageToQueue = async (payload: {
+  type: string;
+  to: string;
+  subject: string;
+  message: string;
+}): Promise<boolean> => {
   const queueUrl = process.env.SQS_QUEUE_URL;
+
   if (!queueUrl) {
-    logger.error('SQS_QUEUE_URL validation failed: Environment variable is missing.');
-    // Fail gracefully so the frontend transaction doesn't abort.
+    logger.warn('SQS_QUEUE_URL not set — skipping notification dispatch.');
     return false;
   }
 
@@ -24,10 +32,10 @@ export const sendMessageToQueue = async (payload: any): Promise<boolean> => {
     });
 
     const response = await sqsClient.send(command);
-    logger.info(`Message dispatched to SQS successfully [MessageID: ${response.MessageId}]`);
+    logger.info(`[SQS] Message dispatched | MessageId: ${response.MessageId} | to: ${payload.to}`);
     return true;
   } catch (error) {
-    logger.error('Failed to send message to SQS:', error);
-    return false;
+    logger.error('[SQS] Failed to send message:', error);
+    return false; // Fail silently — don't break the trip-save transaction
   }
 };

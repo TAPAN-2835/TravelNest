@@ -1,9 +1,0 @@
-{
-  "name": "travelnest-lambda-notifications",
-  "version": "1.0.0",
-  "description": "TravelNest SQS → Lambda → SES notification handler",
-  "main": "notificationHandler.js",
-  "dependencies": {
-    "@aws-sdk/client-ses": "^3.500.0"
-  }
-}
