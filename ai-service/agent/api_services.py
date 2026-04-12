@@ -28,37 +28,31 @@ class WeatherService:
 class PlacesService:
     @staticmethod
     async def get_nearby_places(query: str, dest_name: str = "") -> List[Dict]:
-        api_key = os.getenv("OPENTRIPMAP_API_KEY")
+        api_key = os.getenv("GOOGLE_PLACES_API_KEY")
         if not api_key:
             return []
             
         try:
             async with httpx.AsyncClient() as client:
-                target_city = dest_name if dest_name else query.split()[-1]
-                # Try fetching coordinates first
-                geo_url = f"http://api.opentripmap.com/0.1/en/places/geoname?name={target_city}&apikey={api_key}"
-                geo_res = await client.get(geo_url, timeout=5.0)
-                if geo_res.status_code == 200 and 'lat' in geo_res.json():
-                    geo_data = geo_res.json()
-                    lat, lon = geo_data['lat'], geo_data['lon']
-                    
-                    places_url = f"http://api.opentripmap.com/0.1/en/places/radius?radius=15000&lon={lon}&lat={lat}&kinds=interesting_places&rate=2&format=json&apikey={api_key}"
-                    places_res = await client.get(places_url, timeout=8.0)
-                    
-                    if places_res.status_code == 200:
-                        places_data = places_res.json()
-                        results = []
-                        for p in places_data:
-                            if 'name' in p and p['name'].strip():
-                                results.append({
-                                    "name": p["name"],
-                                    "area": target_city,
-                                    "category": "Attraction"
-                                })
-                            if len(results) >= 15:
-                                break
-                        if results:
-                            return results
+                import urllib.parse
+                target = f"{query} near {dest_name}" if dest_name else query
+                safe_target = urllib.parse.quote(target)
+                url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query=top+tourist+attractions+{safe_target}&key={api_key}"
+                res = await client.get(url, timeout=8.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    results = []
+                    for p in data.get("results", []):
+                        if 'name' in p:
+                            results.append({
+                                "name": p["name"],
+                                "area": p.get("formatted_address", dest_name),
+                                "rating": p.get("rating", 4.0),
+                                "category": "Attraction"
+                            })
+                        if len(results) >= 15:
+                            break
+                    return results
         except Exception as e:
             print(f"Places API Error (Attractions): {e}")
             
@@ -66,28 +60,37 @@ class PlacesService:
 
     @staticmethod
     async def get_hotels(dest_name: str) -> List[Dict]:
+        api_key = os.getenv("GOOGLE_PLACES_API_KEY")
+        if not api_key:
+            return []
+            
         try:
             async with httpx.AsyncClient() as client:
-                headers = {'User-Agent': 'TravelNestApp/1.0'}
-                url = f"https://nominatim.openstreetmap.org/search?q=hotels+in+{dest_name}&format=json&limit=10"
-                res = await client.get(url, headers=headers, timeout=8.0)
-                
+                import urllib.parse
+                safe_target = urllib.parse.quote(f"best hotels in {dest_name}")
+                url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={safe_target}&key={api_key}"
+                res = await client.get(url, timeout=8.0)
                 if res.status_code == 200:
                     data = res.json()
                     results = []
-                    for idx, p in enumerate(data):
-                        if 'name' in p and p['name'].strip():
-                            # Assign an approximate price level to mock for fallback since OSM lacks pricing inherently
-                            base_prices = [3500, 5000, 8000, 12000, 2500]
-                            assumed_price = base_prices[idx % len(base_prices)]
+                    for p in data.get("results", []):
+                        if 'name' in p and p.get("rating", 0) >= 4.0:
+                            price_level = p.get("price_level")
+                            base_price = 3000
+                            if price_level == 1: base_price = 1500
+                            elif price_level == 2: base_price = 3500
+                            elif price_level == 3: base_price = 8000
+                            elif price_level == 4: base_price = 15000
                             
                             results.append({
                                 "name": p["name"],
-                                "location": p.get("display_name", dest_name),
-                                "rating": 4.5,  # Mocked rating since openstreetmap only searches known locations
-                                "price": str(assumed_price),
+                                "location": p.get("formatted_address", dest_name),
+                                "rating": p.get("rating", 4.0),
+                                "price": str(base_price),
                                 "link": "#"
                             })
+                        if len(results) >= 10:
+                            break
                     return results
         except Exception as e:
             print(f"Places API Error (Hotels): {e}")

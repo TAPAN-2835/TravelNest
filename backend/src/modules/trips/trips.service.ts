@@ -2,6 +2,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../shared/utils/response.utils';
 import { io } from '../../config/socket';
 import { sendTripConfirmation } from '../../shared/utils/ses.utils';
+import { sendMessageToQueue } from '../../shared/utils/sqs.utils';
 
 export class TripsService {
   static async getAll(userId: string, query: any) {
@@ -200,16 +201,21 @@ export class TripsService {
        }
     }
 
-    // Send async confirmation email
-    prisma.user.findUnique({ where: { id: userId } }).then(user => {
+    // Send async confirmation email via SQS Event
+    prisma.user.findUnique({ where: { id: userId } }).then(async (user) => {
       if (user) {
-        sendTripConfirmation(user.email, user.name, {
-          title: trip.title,
-          destination: trip.destination.name,
-          startDate: trip.startDate.toDateString(),
-          endDate: trip.endDate.toDateString(),
-          totalBudget: trip.totalBudget,
-          currency: trip.currency
+        // Send generic message event into the event-bus (SQS)
+        await sendMessageToQueue({
+          type: "TRIP_CREATED",
+          userEmail: user.email,
+          tripDetails: {
+             title: trip.title,
+             destination: trip.destination.name,
+             startDate: trip.startDate.toDateString(),
+             endDate: trip.endDate.toDateString(),
+             totalBudget: trip.totalBudget,
+             currency: trip.currency
+          }
         });
       }
     });

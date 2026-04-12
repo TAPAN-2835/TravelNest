@@ -17,7 +17,7 @@ REAL-TIME CONTEXT:
 - REAL Places & Attractions to use: {real_places}
 - REAL Hotels to use: {real_hotels}
 
-TASK: Create a detailed, day-by-day itinerary using ONLY the real places and hotels listed above.
+TASK: Create a highly detailed, day-by-day itinerary using ONLY the real places and hotels listed above.
 
 OUTPUT EXACTLY THIS JSON FORMAT (no markdown, no extra keys):
 {{
@@ -26,7 +26,7 @@ OUTPUT EXACTLY THIS JSON FORMAT (no markdown, no extra keys):
     {{
       "day": 1,
       "theme": "Arrival and City Introduction",
-      "morning":   {{ "activity": "...", "place": "...", "duration": "2h", "cost": 500 }},
+      "morning":   {{ "activity": "Describe exactly what to do, what to see, and HOW to get there (e.g. take a metro/cab). Be highly descriptive!...", "place": "...", "duration": "2h", "cost": 500 }},
       "afternoon": {{ "activity": "...", "place": "...", "duration": "3h", "cost": 1200 }},
       "evening":   {{ "activity": "...", "place": "...", "duration": "2h", "cost": 1500 }}
     }}
@@ -56,6 +56,7 @@ RULES:
 - Ensure no repeated places across days. Each day must be unique.
 - Set totalEstimatedCost strictly to the sum of all activities + hotels + flights, bounded reasonably by the Budget.
 - All costs MUST be literal numbers without currency symbols (e.g. 500, not "₹500").
+- For EVERY "activity", YOU MUST literally explain HOW to travel there (e.g. "Take a local train/cab to the destination") and what exactly to do there. Do NOT just say "Visit place". Give a 3-4 sentence detailed guide!
 """
 
 
