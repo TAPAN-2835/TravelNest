@@ -27,9 +27,8 @@ class Validator:
         try:
             cost_str = data["total_estimated_cost"]
             cost_num = int(re.sub(r'[^\d]', '', cost_str))
-            input_budget = int(input_data["budget"])
-            
             # Allow 20% margin for "realistic" estimates
+            input_budget = int(float(input_data.get("budget", 50000)))
             if cost_num > input_budget * 1.2:
                 return False, f"Exceeds budget significantly. Cost: {cost_num}, Budget: {input_budget}"
         except Exception as e:

@@ -18,6 +18,7 @@ import BudgetTracker from "./pages/dashboard/BudgetTracker";
 import DocumentVault from "./pages/dashboard/DocumentVault";
 import Alerts from "./pages/dashboard/Alerts";
 import SettingsPage from "./pages/dashboard/Settings";
+import TripDetails from "./pages/dashboard/TripDetails";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route element={<DashboardLayout />}>
                 <Route index element={<DashboardHome />} />
                 <Route path="planner" element={<AIPlanner />} />
+                <Route path="trips/:id" element={<TripDetails />} />
                 <Route path="discover" element={<Discover />} />
                 <Route path="bookings" element={<Bookings />} />
                 <Route path="budget" element={<BudgetTracker />} />

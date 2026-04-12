@@ -6,6 +6,10 @@ export const tripsApi = {
     const res = await api.get<ApiResponse<Trip[]>>('/trips');
     return res.data;
   },
+  getTripById: async (id: string) => {
+    const res = await api.get<ApiResponse<Trip>>(`/trips/${id}`);
+    return res.data;
+  },
   createTrip: async (data: any) => {
     const res = await api.post<ApiResponse<Trip>>('/trips', data);
     return res.data;

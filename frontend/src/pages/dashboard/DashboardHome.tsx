@@ -36,6 +36,7 @@ interface Trip {
   dates: string;
   progress: number;
   image: string;
+  fullImageUrl?: string;
   members: number;
 }
 
@@ -66,7 +67,7 @@ function TripCard({ trip, isDragging, onDelete }: { trip: Trip; isDragging?: boo
             <GripVertical className="h-4 w-4" />
           </div>
           <img
-            src={`https://images.unsplash.com/${trip.image}?w=60&h=60&fit=crop`}
+            src={trip.fullImageUrl || `https://images.unsplash.com/${trip.image}?w=60&h=60&fit=crop`}
             alt={trip.destination}
             className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
           />
@@ -99,7 +100,7 @@ function TripCard({ trip, isDragging, onDelete }: { trip: Trip; isDragging?: boo
           </div>
           <div className="flex items-center gap-1">
             <button 
-              onClick={(e) => { e.stopPropagation(); navigate("/dashboard/planner", { state: { tripId: trip.id } }); }}
+              onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/trips/${trip.id}`); }}
               className="p-1 text-muted-foreground hover:text-foreground"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -152,7 +153,8 @@ export default function DashboardHome() {
         destination: destName,
         dates: `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate).toLocaleDateString()}`,
         progress: trip.itineraryId ? 100 : 25,
-        image: "photo-1540959733332-eab4deabeeaf",
+        image: trip.coverImage || trip.destination?.imageUrl?.split('unsplash.com/')[1] || "photo-1540959733332-eab4deabeeaf",
+        fullImageUrl: trip.coverImage || trip.destination?.imageUrl,
         members: trip.groupSize || 1,
         totalBudget: trip.totalBudget || 0
       });

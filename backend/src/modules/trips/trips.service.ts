@@ -102,12 +102,44 @@ export class TripsService {
       });
     }
 
-    // Step 2: Auto Budget Distribution Logic (40/20/20/20)
-    const breakdown = {
-      stay: Math.round(totalBudget * 0.40),
-      food: Math.round(totalBudget * 0.20),
-      travel: Math.round(totalBudget * 0.20),
-      activities: Math.round(totalBudget * 0.20)
+    // Step 2: Dynamic Budget Extraction Logic
+    let flightCost = 0;
+    if (data.itineraryData?.flights && Array.isArray(data.itineraryData.flights)) {
+       flightCost = data.itineraryData.flights.reduce((acc: number, f: any) => {
+          let p = String(f.price || "0").replace(/[^0-9]/g, '');
+          return acc + (parseInt(p) || 0);
+       }, 0);
+    }
+
+    let hotelCost = 0;
+    if (data.itineraryData?.hotels && Array.isArray(data.itineraryData.hotels) && data.itineraryData.hotels.length > 0) {
+       let p = String(data.itineraryData.hotels[0].price || "0").replace(/[^0-9]/g, '');
+       hotelCost = (parseInt(p) || 0) * Math.max(1, duration - 1);
+    }
+
+    let actCost = 0;
+    if (data.itineraryData?.days && Array.isArray(data.itineraryData.days)) {
+       data.itineraryData.days.forEach((d: any) => {
+         ['morning', 'afternoon', 'evening'].forEach(slot => {
+            if (d[slot] && d[slot].cost) {
+               let p = String(d[slot].cost).replace(/[^0-9]/g, '');
+               actCost += (parseInt(p) || 0);
+            }
+         });
+       });
+    }
+
+    let totalExtracted = flightCost + hotelCost + actCost;
+    
+    // Assign remaining budget to food, minimum 15% of total Budget
+    let foodCost = Math.max(Math.round(totalBudget * 0.15), totalBudget - totalExtracted);
+    
+    // Fallback if data extraction completely fails, otherwise use extracted
+    let breakdown = {
+      stay: hotelCost > 0 ? hotelCost : Math.round(totalBudget * 0.40),
+      food: foodCost > 0 ? foodCost : Math.round(totalBudget * 0.20),
+      travel: flightCost > 0 ? flightCost : Math.round(totalBudget * 0.20),
+      activities: actCost > 0 ? actCost : Math.round(totalBudget * 0.20)
     };
 
     const trip = await prisma.trip.create({
@@ -130,10 +162,10 @@ export class TripsService {
             userId,
             expenses: {
               create: [
-                { category: 'HOTELS', description: 'Budget for Stay (Auto-allocated)', amount: breakdown.stay, date: new Date(data.startDate) },
-                { category: 'FOOD', description: 'Budget for Food (Auto-allocated)', amount: breakdown.food, date: new Date(data.startDate) },
-                { category: 'TRANSPORT', description: 'Budget for Travel (Auto-allocated)', amount: breakdown.travel, date: new Date(data.startDate) },
-                { category: 'ACTIVITIES', description: 'Budget for Activities (Auto-allocated)', amount: breakdown.activities, date: new Date(data.startDate) },
+                { category: 'HOTELS', description: 'Budget for Stay', amount: breakdown.stay, date: new Date(data.startDate) },
+                { category: 'FOOD', description: 'Budget for Food', amount: breakdown.food, date: new Date(data.startDate) },
+                { category: 'TRANSPORT', description: 'Budget for Travel', amount: breakdown.travel, date: new Date(data.startDate) },
+                { category: 'ACTIVITIES', description: 'Budget for Activities', amount: breakdown.activities, date: new Date(data.startDate) },
               ]
             }
           },
