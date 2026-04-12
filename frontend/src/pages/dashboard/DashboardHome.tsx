@@ -20,7 +20,7 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  DragOverEvent,
+  useDroppable,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -28,6 +28,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTrips } from "@/hooks/trips/useTrips";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Trip {
   id: string;
@@ -38,6 +39,20 @@ interface Trip {
   image: string;
   fullImageUrl?: string;
   members: number;
+}
+
+function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`space-y-3 min-h-[120px] p-2 rounded-xl border-2 border-dashed transition-colors ${
+        isOver ? "border-primary/50 bg-primary/5" : "border-transparent hover:border-border"
+      }`}
+    >
+      {children}
+    </div>
+  );
 }
 
 const columns = [
@@ -173,20 +188,31 @@ export default function DashboardHome() {
     return null;
   };
 
-  const handleDragOver = async (event: DragOverEvent) => {
+  const queryClient = useQueryClient();
+
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     if (!over) return;
     const activeCol = findColumn(String(active.id));
     const overCol = findColumn(String(over.id)) || String(over.id);
     if (!activeCol || activeCol === overCol || !['planning', 'upcoming', 'completed'].includes(overCol)) return;
 
+    // Optimistic UI Update
+    queryClient.setQueryData(["trips"], (oldData: any) => {
+      const targetArray = Array.isArray(oldData) ? oldData : oldData?.data;
+      if (!targetArray) return oldData;
+      const updated = targetArray.map((t: any) => 
+        t.id === active.id ? { ...t, status: overCol.toUpperCase() } : t
+      );
+      return Array.isArray(oldData) ? updated : { ...oldData, data: updated };
+    });
+
     try {
       const { tripsApi } = await import("@/api/trips");
       await tripsApi.updateTripStatus(String(active.id), overCol.toUpperCase());
-      toast.success(`Trip moved to ${overCol}`);
-      refetch();
     } catch (err) {
       toast.error("Failed to update trip status");
+      queryClient.invalidateQueries({ queryKey: ["trips"] }); // Revert on failure
     }
   };
 
@@ -280,7 +306,7 @@ export default function DashboardHome() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
         >
           <div className="grid md:grid-cols-3 gap-6">
             {columns.map((col) => (
@@ -291,8 +317,8 @@ export default function DashboardHome() {
                   <span className="text-xs text-muted-foreground">({loading ? '...' : (trips[col.id]?.length || 0)})</span>
                 </div>
                 
-                <SortableContext items={trips[col.id]?.map((t: any) => t.id) || []} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-3 min-h-[120px] p-2 rounded-xl border-2 border-dashed border-transparent hover:border-border transition-colors">
+                <DroppableColumn id={col.id}>
+                  <SortableContext items={trips[col.id]?.map((t: any) => t.id) || []} strategy={verticalListSortingStrategy}>
                     {loading && tripsArray.length === 0 ? (
                       Array.of(1, 2).map((i) => (
                         <div key={i} className="bg-card rounded-xl border border-border p-4 space-y-3">
@@ -316,8 +342,8 @@ export default function DashboardHome() {
                         <TripCard key={trip.id} trip={trip} onDelete={handleDeleteTrip} />
                       ))
                     )}
-                  </div>
-                </SortableContext>
+                  </SortableContext>
+                </DroppableColumn>
               </div>
             ))}
           </div>

@@ -78,7 +78,9 @@ export class TripsService {
 
   static async saveGeneratedTrip(userId: string, data: any) {
     const duration = data.days || 3;
-    const totalBudget = Number(data.totalBudget) || 0;
+    const rawAiBudget = String(data.itineraryData?.totalEstimatedCost || '').replace(/[^0-9.]/g, '');
+    const aiBudget = parseFloat(rawAiBudget);
+    const totalBudget = (!isNaN(aiBudget) && aiBudget > 0) ? aiBudget : (Number(data.totalBudget) || 0);
     const destName = data.destination || data.itineraryData?.destination || "Unknown Destination";
 
     // Step 1: Find or Create Destination (Prevent FK violation)
