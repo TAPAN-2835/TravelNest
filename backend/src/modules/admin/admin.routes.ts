@@ -5,42 +5,22 @@ import { authorize } from '../../middlewares/role.middleware';
 
 const router = Router();
 
+// All admin routes require authentication + ADMIN role
 router.use(authenticate, authorize('ADMIN'));
 
-/**
- * @swagger
- * /api/admin/dashboard:
- *   get:
- *     summary: Get admin dashboard data
- *     tags: [Admin]
- */
-router.get('/dashboard', AdminController.getDashboard);
+// Dashboard Stats
+router.get('/stats', AdminController.getStats);
 
-/**
- * @swagger
- * /api/admin/users:
- *   get:
- *     summary: Get all users
- *     tags: [Admin]
- */
+// Users
 router.get('/users', AdminController.getUsers);
-
-/**
- * @swagger
- * /api/admin/users/:id/role:
- *   patch:
- *     summary: Update user role
- *     tags: [Admin]
- */
+router.get('/users/:id', AdminController.getUserById);
 router.patch('/users/:id/role', AdminController.updateUserRole);
 
-/**
- * @swagger
- * /api/admin/analytics:
- *   get:
- *     summary: Get platform analytics
- *     tags: [Admin]
- */
+// Trips
+router.get('/trips', AdminController.getTrips);
+
+// Legacy
+router.get('/dashboard', AdminController.getDashboard);
 router.get('/analytics', AdminController.getAnalytics);
 
 export default router;

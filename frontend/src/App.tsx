@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./hooks/auth/useAuth";
 import PrivateRoute from "./components/PrivateRoute";
+import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -19,6 +20,13 @@ import DocumentVault from "./pages/dashboard/DocumentVault";
 import Alerts from "./pages/dashboard/Alerts";
 import SettingsPage from "./pages/dashboard/Settings";
 import TripDetails from "./pages/dashboard/TripDetails";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminUserDetail from "./pages/admin/AdminUserDetail";
+import AdminTrips from "./pages/admin/AdminTrips";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +54,18 @@ const App = () => (
                 <Route path="vault" element={<DocumentVault />} />
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="settings" element={<SettingsPage />} />
+              </Route>
+            </Route>
+
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={<AdminRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="users/:id" element={<AdminUserDetail />} />
+                <Route path="trips" element={<AdminTrips />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="settings" element={<AdminSettings />} />
               </Route>
             </Route>
 

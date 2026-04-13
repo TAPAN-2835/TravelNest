@@ -26,7 +26,7 @@ OUTPUT EXACTLY THIS JSON FORMAT (no markdown, no extra keys):
     {{
       "day": 1,
       "theme": "Arrival and City Introduction",
-      "morning":   {{ "activity": "Describe exactly what to do, what to see, and HOW to get there (e.g. take a metro/cab). Be highly descriptive!...", "place": "...", "duration": "2h", "cost": 500 }},
+      "morning":   {{ "activity": "Describe exactly what to do, what to see, and HOW to get there. Be highly descriptive!", "place": "...", "duration": "2h", "cost": 500 }},
       "afternoon": {{ "activity": "...", "place": "...", "duration": "3h", "cost": 1200 }},
       "evening":   {{ "activity": "...", "place": "...", "duration": "2h", "cost": 1500 }}
     }}
@@ -50,13 +50,12 @@ OUTPUT EXACTLY THIS JSON FORMAT (no markdown, no extra keys):
 
 RULES:
 - Generate exactly {days} day objects.
-- You MUST use only provided real places and hotels.
-- If data is not available, state "Not available".
+- Use ONLY provided real places and hotels.
 - DO NOT invent locations or use generic hallucinated placeholder names.
-- Ensure no repeated places across days. Each day must be unique.
-- Set totalEstimatedCost strictly to the sum of all activities + hotels + flights, bounded reasonably by the Budget.
-- All costs MUST be literal numbers without currency symbols (e.g. 500, not "₹500").
-- For EVERY "activity", YOU MUST literally explain HOW to travel there (e.g. "Take a local train/cab to the destination") and what exactly to do there. Do NOT just say "Visit place". Give a 3-4 sentence detailed guide!
+- Ensure no repeated places across days.
+- Set totalEstimatedCost to the sum of all activities + hotels + flights.
+- All costs MUST be literal numbers (e.g. 500, not "₹500").
+- For EVERY activity, explain HOW to travel there and what to do in 2-3 sentences.
 """
 
 
@@ -71,7 +70,7 @@ class TravelAgent:
             destination, days, budget, interests
         )
 
-        # 2. Parallel async data fetch (weather + live places + real hotels)
+        # 2. Parallel async data fetch
         augmented_data = await self.data_manager.get_augmented_context(dest, clean_interests)
 
         # 3. Build prompt
@@ -81,8 +80,8 @@ class TravelAgent:
             budget=budget_val,
             interests=", ".join(clean_interests),
             weather=json.dumps(augmented_data["live_context"]["weather"]),
-            real_places=json.dumps(augmented_data["real_places"]),
-            real_hotels=json.dumps(augmented_data["real_hotels"]),
+            real_places=json.dumps(augmented_data.get("real_places", augmented_data.get("static_attractions", []))),
+            real_hotels=json.dumps(augmented_data.get("real_hotels", augmented_data.get("static_hotels", []))),
         )
 
         # 4. LLM generation with Validation Retries
@@ -92,11 +91,10 @@ class TravelAgent:
             last_error = ""
 
             for attempt in range(max_retries):
-                # Dynamically append feedback if retrying
                 current_prompt = prompt if attempt == 0 else f"{prompt}\n\nERROR IN PREVIOUS ATTEMPT. FIX THIS: {last_error}"
                 itinerary_data = await asyncio.to_thread(self.ai_engine.generate_trip, current_prompt)
 
-                # ── Normalise response shape so frontend always gets the same keys ──
+                # Normalise response shape
                 if "days" not in itinerary_data and "itinerary" in itinerary_data:
                     itinerary_data["days"] = itinerary_data.pop("itinerary")
 
@@ -104,10 +102,12 @@ class TravelAgent:
                     itinerary_data["flights"] = _default_flights(dest)
 
                 # Validate
+                real_places = augmented_data.get("real_places", augmented_data.get("static_attractions", []))
+                real_hotels = augmented_data.get("real_hotels", augmented_data.get("static_hotels", []))
                 is_valid, validation_msg = Validator.validate_itinerary(
-                    itinerary_data, 
-                    augmented_data["real_places"], 
-                    augmented_data["real_hotels"]
+                    itinerary_data,
+                    real_places,
+                    real_hotels
                 )
 
                 if is_valid:
@@ -125,10 +125,10 @@ class TravelAgent:
                 itinerary_data["totalEstimatedCost"] = _calc_cost(
                     itinerary_data.get("days", []), budget_val
                 )
-            
-            # Inject raw data into response struct for Frontend rendering arrays
-            itinerary_data["real_hotels"] = augmented_data["real_hotels"]
-            itinerary_data["real_places"] = augmented_data["real_places"]
+
+            # Inject raw data for Frontend rendering
+            itinerary_data["real_hotels"] = augmented_data.get("real_hotels", augmented_data.get("static_hotels", []))
+            itinerary_data["real_places"] = augmented_data.get("real_places", augmented_data.get("static_attractions", []))
 
             return {
                 "success": True,
@@ -142,10 +142,10 @@ class TravelAgent:
             fallback["data"]["totalEstimatedCost"] = budget_val * 0.75
             return fallback
 
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _default_flights(destination: str) -> list:
-    """Return a sensible default flight pair when LLM doesn't generate one."""
     return [
         {
             "airline": "IndiGo",
@@ -158,8 +158,8 @@ def _default_flights(destination: str) -> list:
         }
     ]
 
+
 def _calc_cost(days: list, budget: float) -> float:
-    """Sum all slot costs across all days."""
     total = 0.0
     for day in days:
         for slot in ("morning", "afternoon", "evening"):

@@ -60,7 +60,7 @@ export class AuthController {
 
   static async me(req: any, res: Response, next: NextFunction) {
     try {
-      sendSuccess(res, 'Current user profile fetched', { user: req.user });
+      sendSuccess(res, 'Current user profile fetched', req.user);
     } catch (error) {
       next(error);
     }

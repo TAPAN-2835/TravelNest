@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Compass, Map, Sparkles, Search, Package, Wallet, FolderLock, Bell, Settings,
-  ChevronLeft, ChevronRight, LogOut, Crown, BellDot, User, Menu, X
+  ChevronLeft, ChevronRight, LogOut, Crown, BellDot, User, Menu, X, Shield
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -100,6 +100,26 @@ export default function DashboardLayout() {
             </Link>
           ))}
         </nav>
+
+        {/* Admin Link (ADMIN role only) */}
+        {user?.role === 'ADMIN' && (
+          <div className="px-3 pb-4 flex-shrink-0">
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold bg-amber-500/10 text-amber-600 hover:bg-amber-500 hover:text-white transition-all duration-300 shadow-sm border border-amber-500/20 group"
+            >
+              <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20 group-hover:bg-white/20 transition-colors">
+                 <Shield className="h-4 w-4 text-white" />
+              </div>
+              {!collapsed && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col">
+                  <span className="leading-none mb-1">Admin Console</span>
+                  <span className="text-[10px] opacity-70 font-medium">Switch to System View</span>
+                </motion.div>
+              )}
+            </Link>
+          </div>
+        )}
 
         {/* Upgrade Card */}
         <AnimatePresence>
