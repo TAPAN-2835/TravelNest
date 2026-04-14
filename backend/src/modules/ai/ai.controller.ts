@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
+import { enrichItineraryData, getItineraryGallery } from '../../shared/utils/google-places.utils';
+
+
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -32,6 +35,13 @@ export const planTrip = async (req: Request, res: Response, next: NextFunction) 
         // Axios wraps in response.data, so the payload is response.data.data
         const payload = response.data;
         const aiData = payload.data ?? payload; // handle both wrapped and unwrapped
+
+        // Enrichment: Fetch images for the generated itinerary
+        const placeImages = await enrichItineraryData(aiData);
+        const gallery = await getItineraryGallery(String(destination), aiData);
+        aiData.placeImages = placeImages;
+        aiData.gallery = gallery;
+
 
         return res.status(200).json({
             success: true,

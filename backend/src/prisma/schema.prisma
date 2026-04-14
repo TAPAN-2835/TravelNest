@@ -86,6 +86,17 @@ model Trip {
   documents       Document[]
   alerts          Alert[]
   itineraryId     String?     // References MongoDB document
+  itineraryPlaces ItineraryPlace[]
+}
+
+model ItineraryPlace {
+  id        String @id @default(uuid())
+  tripId    String
+  name      String
+  imageUrl  String
+  createdAt DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 }
 
 model Booking {

@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useSaveTrip } from "@/hooks/trips/useTrips";
+import { ImageLightbox } from "@/components/dashboard/ImageLightbox";
 
 const tripStyles = ["🏖 Beach", "🏔 Adventure", "🎭 Culture", "🛍 Shopping", "🍽 Food", "💆 Wellness"];
 
@@ -56,7 +57,8 @@ export default function AIPlanner() {
     end: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0]
   });
   const [error, setError] = useState<string | null>(null);
-  
+  const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null);
+
   const navigate = useNavigate();
 
   const toggleStyle = (style: string) => {
@@ -116,7 +118,8 @@ export default function AIPlanner() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <>
+    <div className="w-full space-y-12 pb-20 px-4 md:px-10 lg:px-16">
       <div>
         <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" /> AI Itinerary Generator
@@ -142,18 +145,18 @@ export default function AIPlanner() {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input 
-                type="date" 
-                className="h-11 rounded-lg" 
+              <Input
+                type="date"
+                className="h-11 rounded-lg"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>End Date</Label>
-              <Input 
-                type="date" 
-                className="h-11 rounded-lg" 
+              <Input
+                type="date"
+                className="h-11 rounded-lg"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               />
@@ -207,9 +210,9 @@ export default function AIPlanner() {
           <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
             <div className="mt-0.5">⚠️</div>
             <div>
-               <p className="font-semibold">Generation Error</p>
-               <p className="opacity-80">{error}</p>
-               <Button onClick={handleGenerate} variant="link" className="p-0 h-auto text-destructive underline mt-2">Try Again</Button>
+              <p className="font-semibold">Generation Error</p>
+              <p className="opacity-80">{error}</p>
+              <Button onClick={handleGenerate} variant="link" className="p-0 h-auto text-destructive underline mt-2">Try Again</Button>
             </div>
           </div>
         )}
@@ -238,10 +241,10 @@ export default function AIPlanner() {
               <h3 className="text-lg font-semibold text-foreground">Your AI-Generated Itinerary</h3>
               <div className="flex gap-2">
                 <Button onClick={() => setShowItinerary(false)} variant="ghost" size="sm">Reset</Button>
-                <Button 
-                  onClick={handleSave} 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  onClick={handleSave}
+                  variant="outline"
+                  size="sm"
                   className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Save className="h-4 w-4" /> Save to Dashboard
@@ -347,6 +350,57 @@ export default function AIPlanner() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showItinerary && itinerary?.gallery?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-12 py-16 border-t border-border mt-12">
+            <div className="flex flex-col items-center text-center space-y-4 mb-12">
+              <h3 className="text-4xl font-black text-foreground tracking-tighter flex items-center gap-4">
+                Journey Highlights 📸
+              </h3>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
+                Experience your personalized adventure through high-fidelity visuals
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 w-full px-4">
+              {itinerary.gallery.map((item: any, idx: number) => (
+                <div key={idx} className="flex flex-col gap-6 group">
+                  <motion.div 
+                    onClick={() => setSelectedImage({ url: item.url, name: item.name })}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative w-full aspect-square rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-muted cursor-zoom-in border-8 border-white dark:border-zinc-900 transition-all duration-500 hover:shadow-primary/20"
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80`;
+                      }}
+                    />
+                  </motion.div>
+                  <div className="px-4">
+                     <p className="text-[11px] font-black uppercase tracking-[0.4em] text-primary mb-2 opacity-70">Curation Spot</p>
+                     <h4 className="text-2xl font-bold text-foreground leading-tight tracking-tight">{item.name}</h4>
+                     <p className="text-xs text-muted-foreground mt-3 font-semibold opacity-40 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                       <span className="h-px w-6 bg-primary/30" /> Click to enlarge
+                     </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+
+    <ImageLightbox
+      isOpen={!!selectedImage}
+      onClose={() => setSelectedImage(null)}
+      imageUrl={selectedImage?.url || ""}
+      imageName={selectedImage?.name || ""}
+    />
+    </>
   );
 }

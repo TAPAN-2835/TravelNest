@@ -3,6 +3,9 @@ import { AppError } from '../../shared/utils/response.utils';
 import { io } from '../../config/socket';
 import { sendTripConfirmation } from '../../shared/utils/ses.utils';
 import { sendMessageToQueue } from '../../shared/utils/sqs.utils';
+import { getPlaceImage, getItineraryGallery } from '../../shared/utils/google-places.utils';
+
+
 
 export class TripsService {
   static async getAll(userId: string, query: any) {
@@ -177,6 +180,10 @@ export class TripsService {
       include: { destination: true }
     });
 
+    // Enrichment: Fetch and save images for each place in the itinerary
+    await this.enrichTripWithImages(trip.id, data.itineraryData);
+
+
     // If we have a legacy itinerary ID or need to create one, handle it
     if (data.itineraryData && !trip.itineraryId) {
        try {
@@ -231,6 +238,7 @@ export class TripsService {
         bookings: true,
         budget: { include: { expenses: true } },
         documents: true,
+        itineraryPlaces: true,
       },
     });
 
@@ -273,4 +281,31 @@ export class TripsService {
   static async updateStatus(userId: string, id: string, status: string) {
     return this.update(userId, id, { status });
   }
+
+  /**
+   * Internal helper to enrich a trip with images for its itinerary places.
+   * Extracts names, fetches from Google, and stores in Postgres.
+   */
+  private static async enrichTripWithImages(tripId: string, itineraryData: any) {
+    if (!itineraryData) return;
+
+    try {
+      const destName = itineraryData.destination || "Destination";
+      const gallery = await getItineraryGallery(destName, itineraryData);
+
+      for (const item of gallery) {
+        await prisma.itineraryPlace.create({
+          data: {
+            tripId,
+            name: item.name,
+            imageUrl: item.url,
+          },
+        });
+      }
+    } catch (err) {
+      console.error(`Failed to enrich trip gallery for trip ${tripId}:`, err);
+    }
+  }
+
 }
+
