@@ -1,6 +1,8 @@
 import os
 import httpx
-from typing import List, Dict
+import json
+from typing import List, Dict, Optional
+from groq import Groq
 
 # Curated fallback data per destination so validator always has valid names
 STATIC_DESTINATIONS = {
@@ -212,3 +214,133 @@ class PlacesService:
         if key:
             return STATIC_DESTINATIONS[key]["hotels"]
         return DEFAULT_FALLBACK["hotels"]
+
+class SerperService:
+    @staticmethod
+    async def get_local_news(city: str) -> List[Dict]:
+        """Fetch travel-relevant local news and events via Serper News API."""
+        api_key = os.getenv("SERPER_API_KEY")
+        if not api_key:
+            return []
+
+        # Target keywords for relevant news + negative filters to remove junk
+        positive_keywords = "(festivals OR concerts OR transport strikes OR travel alerts OR local holidays OR major sports events)"
+        negative_keywords = "-horoscope -gold -massacre -history -anniversary -cricket -stock"
+        query = f"{positive_keywords} in {city} {negative_keywords}"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                url = "https://google.serper.dev/news"
+                headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
+                # tbs: qdr:w2 limits results to icons from the last 2 weeks
+                payload = {
+                    "q": query, 
+                    "num": 20, # Fetch more to have better filtering pool
+                    "tbs": "qdr:w2" 
+                }
+                response = await client.post(url, headers=headers, json=payload, timeout=8.0)
+                if response.status_code == 200:
+                    data = response.json()
+                    news_results = data.get("news", [])
+                    
+                    # AI Filtering for extreme relevance
+                    filter_service = NewsFilterService()
+                    filtered_news = await filter_service.filter_relevant_news(city, news_results)
+                    return filtered_news[:5] # Return top 5 most relevant
+        except Exception as e:
+            print(f"Serper API Error: {e}")
+        return []
+
+
+class NewsFilterService:
+    def __init__(self):
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.client = Groq(api_key=self.api_key) if self.api_key else None
+        self.model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+    async def filter_relevant_news(self, city: str, news: List[Dict]) -> List[Dict]:
+        """Use LLM to filter news items for travel relevance."""
+        if not self.client or not news:
+            return news
+
+        # Prepare a list of headlines for the LLM to review
+        headlines = "\n".join([f"{i}: {n.get('title')}" for i, n in enumerate(news)])
+        
+        prompt = f"""
+        City: {city}
+        News Headlines:
+        {headlines}
+        
+        TASK: Critically evaluate these headlines for "Travel Utility".
+        RELEVANT (Return index):
+        - Logistical impact (strikes, weather alerts, airport news).
+        - Entertainment (concerts, music festivals, food fairs).
+        - Cultural (major local holidays, parades).
+        
+        IRRELEVANT (Discard - DO NOT return index):
+        - Economic data (gold rates, housing, stocks).
+        - Historical/Commemorative (anniversaries of massacres, old events).
+        - Routine crime/politics (standard local arrests, minor govt changes).
+        - Generic greetings (WhatsApp status wishes).
+        
+        Return ONLY a JSON array of the indices of the HIGHLY UTILITY headlines for a tourist currently in the city. 
+        Example: [0, 2, 5]
+        """
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a travel intelligence filter. Response must be a JSON list of numbers."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            raw = response.choices[0].message.content
+            indices_data = json.loads(raw)
+            # Support both {"indices": [...]} and [...] formats if LLM varies
+            indices = indices_data.get("indices", indices_data) if isinstance(indices_data, dict) else indices_data
+            
+            if not isinstance(indices, list):
+                return news # Fallback to all if parsing fails
+                
+            return [news[i] for i in indices if i < len(news)]
+        except Exception as e:
+            print(f"NewsFilter Error: {e}")
+            return news
+
+
+class FamilyInsightsService:
+    def __init__(self):
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.client = Groq(api_key=self.api_key) if self.api_key else None
+        self.model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+    async def generate_family_tip(self, city: str, weather_data: Dict) -> str:
+        """Generate a child-friendly travel tip based on weather."""
+        if not self.client:
+            return "Plan your day based on the local weather forecast."
+
+        prompt = f"""
+        Destination: {city}
+        Current Weather: {weather_data.get('condition', 'Unknown')}, {weather_data.get('temp', 'N/A')}
+        Additional Info: Humidity {weather_data.get('humidity', 'N/A')}, Wind {weather_data.get('wind', 'N/A')}
+        
+        TASK: Provide a one-sentence, highly practical travel tip specifically for a family traveling with children. 
+        Focus on safety, comfort (sun/rain protection), or age-appropriate activity suggestions.
+        Keep it under 20 words.
+        """
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful travel assistant for families."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=50
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"FamilyInsights Error: {e}")
+            return "Great day to explore with the family!"

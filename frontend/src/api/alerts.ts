@@ -4,8 +4,22 @@ import { ApiResponse } from '../types';
 export interface WeatherForecast {
   date: string;
   temp: number;
+  feelsLike: number;
+  humidity: number;
+  windSpeed: number;
+  pop: number;
   condition: string;
   icon: string;
+  iconCode: string;
+}
+
+export interface NewsItem {
+  title: string;
+  link: string;
+  snippet: string;
+  date: string;
+  source: string;
+  imageUrl?: string;
 }
 
 export interface WeatherAlert {
@@ -13,7 +27,10 @@ export interface WeatherAlert {
   destination: string;
   startDate: string;
   endDate: string;
-  forecast: WeatherForecast[];
+  dayForecast: WeatherForecast[];
+  nightForecast: WeatherForecast[];
+  news?: NewsItem[];
+  familyTip?: string;
 }
 
 export const alertsApi = {

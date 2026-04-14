@@ -142,20 +142,39 @@ export class AlertsService {
 
     const weatherAlerts = await Promise.all(
       trips.map(async (trip) => {
-        const forecast = await WeatherService.getWeatherForecast(
+        const forecastData = await WeatherService.getWeatherForecast(
           trip.destination.name,
           trip.startDate,
           trip.endDate
         );
 
-        if (forecast.length === 0) return null;
+        if (forecastData.day.length === 0 && forecastData.night.length === 0) return null;
+
+        // Fetch smart news and family tips from AI Service
+        let smartData = { news: [], family_tip: "" };
+        try {
+          const aiRes = await axios.post(`${process.env.AI_SERVICE_URL}/smart-alerts`, {
+            destination: trip.destination.name,
+            tripId: trip.id,
+            weather_summary: forecastData.day[0] || forecastData.night[0] // Pass first day as context
+          }, { timeout: 10000 });
+          
+          if (aiRes.data.success) {
+            smartData = aiRes.data.data;
+          }
+        } catch (err) {
+          console.error("AI Service Error for smart alerts:", err);
+        }
 
         return {
           tripId: trip.id,
           destination: trip.destination.name,
           startDate: trip.startDate,
           endDate: trip.endDate,
-          forecast,
+          dayForecast: forecastData.day,
+          nightForecast: forecastData.night,
+          news: smartData.news,
+          familyTip: smartData.family_tip
         };
       })
     );

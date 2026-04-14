@@ -6,14 +6,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from agent.orchestrator import TravelAgent
+from agent.api_services import SerperService, FamilyInsightsService, WeatherService
 from logger import get_logger
 
 logger = get_logger("ai-service")
 
 app = FastAPI(title="TravelNest AI Service", version="2.0.0")
 
-# Single shared agent instance (stateless, safe to reuse)
+# Shared service instances
 _agent = TravelAgent()
+_news_service = SerperService()
+_family_service = FamilyInsightsService()
+_weather_service = WeatherService()
 
 
 class ItineraryRequest(BaseModel):
@@ -22,6 +26,12 @@ class ItineraryRequest(BaseModel):
     budget: Optional[float] = 50000.0
     interests: Optional[List[str]] = ["sightseeing"]
     countryPreference: Optional[str] = "india-first"
+
+
+class SmartAlertsRequest(BaseModel):
+    destination: str
+    tripId: str
+    weather_summary: Optional[dict] = None
 
 
 @app.get("/health")
@@ -73,6 +83,44 @@ async def handle_generate_itinerary(request: ItineraryRequest):
             status_code=500,
             detail={"success": False, "error": str(e)},
         )
+
+
+@app.post("/smart-alerts")
+async def handle_smart_alerts(request: SmartAlertsRequest):
+    """
+    Combines real-time news, events, and family tips for the destination.
+    """
+    logger.info(f"Fetching smart alerts for: {request.destination}")
+    
+    try:
+        # Fetch news and weather in parallel
+        news_task = _news_service.get_local_news(request.destination)
+        
+        # If no weather summary provided, fetch basic weather
+        if request.weather_summary:
+            weather = request.weather_summary
+        else:
+            weather = await _weather_service.get_current_weather(request.destination)
+            
+        news = await news_task
+        
+        # Generate family tip based on weather
+        family_tip = await _family_service.generate_family_tip(request.destination, weather)
+        
+        return {
+            "success": True,
+            "data": {
+                "news": news,
+                "family_tip": family_tip,
+                "live_weather": weather
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in /smart-alerts: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":
