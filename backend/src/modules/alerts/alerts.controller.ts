@@ -13,6 +13,15 @@ export class AlertsController {
     }
   }
 
+  static async getWeatherAlerts(req: any, res: Response, next: NextFunction) {
+    try {
+      const alerts = await AlertsService.getWeatherAlerts(req.user!.id);
+      sendSuccess(res, 'Weather alerts fetched successfully', alerts);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async subscribe(req: any, res: Response, next: NextFunction) {
     try {
       await AlertsService.subscribe(req.user!.id, req.body.tripId);

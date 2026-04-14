@@ -2,6 +2,7 @@ import axios from 'axios';
 import { prisma } from '../../config/database';
 import { AppError } from '../../shared/utils/response.utils';
 import { io } from '../../config/socket';
+import { WeatherService } from '../weather/weather.service';
 
 export class AlertsService {
   static async getAll(userId: string, query: any) {
@@ -117,6 +118,48 @@ export class AlertsService {
       io.to(`trip:${alert.tripId}`).emit('alert:new', { alert });
     });
 
+
     return alerts;
+  }
+
+  static async getWeatherAlerts(userId: string) {
+    const now = new Date();
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(now.getDate() + 5);
+
+    // Fetch trips that are in planning, upcoming, or ongoing status
+    // and start within the next 5 days (or are already ongoing)
+    const trips = await prisma.trip.findMany({
+      where: {
+        userId,
+        status: { in: ['PLANNING', 'UPCOMING', 'ONGOING'] },
+        startDate: { lte: fiveDaysFromNow },
+        endDate: { gte: now },
+      },
+      include: { destination: true },
+      orderBy: { startDate: 'asc' },
+    });
+
+    const weatherAlerts = await Promise.all(
+      trips.map(async (trip) => {
+        const forecast = await WeatherService.getWeatherForecast(
+          trip.destination.name,
+          trip.startDate,
+          trip.endDate
+        );
+
+        if (forecast.length === 0) return null;
+
+        return {
+          tripId: trip.id,
+          destination: trip.destination.name,
+          startDate: trip.startDate,
+          endDate: trip.endDate,
+          forecast,
+        };
+      })
+    );
+
+    return weatherAlerts.filter((alert) => alert !== null);
   }
 }

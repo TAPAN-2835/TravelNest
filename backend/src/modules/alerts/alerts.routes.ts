@@ -20,6 +20,15 @@ router.get('/', AlertsController.getAll);
 
 /**
  * @swagger
+ * /api/alerts/weather:
+ *   get:
+ *     summary: Get real-time weather alerts for upcoming trips
+ *     tags: [Alerts]
+ */
+router.get('/weather', AlertsController.getWeatherAlerts);
+
+/**
+ * @swagger
  * /api/alerts/subscribe:
  *   post:
  *     summary: Subscribe to destination alerts
