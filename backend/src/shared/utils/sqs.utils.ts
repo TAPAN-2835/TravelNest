@@ -6,9 +6,16 @@ const sqsClient = new SQSClient({
 });
 
 /**
- * Send a notification event to SQS.
- * Lambda picks it up and sends the email via SES.
- *
+ * ============================================================================
+ * 🔹 SQS + LAMBDA ASYNCHRONOUS NOTIFICATION FLOW
+ * ============================================================================
+ * Flow: Backend API -> AWS SQS (Queue) -> AWS Lambda -> AWS SES (Email)
+ * 
+ * Why? 
+ * This prevents the main Node.js event loop from blocking while attempting
+ * external email dispatch. Elastic scale is achieved because SQS safely buffers 
+ * spikes in user activity, and Lambda spins up automatically to process them.
+ * 
  * Payload shape:
  *   { type: "EMAIL", to: string, subject: string, message: string }
  */

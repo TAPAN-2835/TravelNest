@@ -9,13 +9,49 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - backend
+      - backend_1
+      - backend_2
       - frontend
       - ai-service
     restart: unless-stopped
 
-  backend:
-    container_name: travelnest-backend
+  backend_1:
+    container_name: travelnest-backend-1
+    # Vertical Scaling: To scale vertically (e.g., EC2 t2.micro -> t3.medium), increase memory/cpu limits here
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.50'
+    #       memory: 512M
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["apps"]
+    environment:
+      - NODE_ENV=production
+      - FRONTEND_URL=http://localhost
+      - AI_SERVICE_URL=http://ai-service:8000
+      - DATABASE_URL=postgresql://travelnest_user:travelnest_pass@postgres:5432/travelnest
+      - MONGODB_URI=mongodb://mongodb:27017/travelnest
+      - REDIS_URL=redis://redis:6379
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+      ai-service:
+        condition: service_started
+    restart: unless-stopped
+
+  backend_2:
+    container_name: travelnest-backend-2
+    # Horizontal Scaling Replica 2
     build: 
       context: ./backend
       dockerfile: Dockerfile
@@ -49,7 +85,7 @@ services:
       dockerfile: Dockerfile
     profiles: ["apps"]
     depends_on:
-      - backend
+      - backend_1
     restart: unless-stopped
 
   ai-service:
