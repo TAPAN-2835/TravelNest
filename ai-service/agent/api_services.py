@@ -221,34 +221,40 @@ class SerperService:
         """Fetch travel-relevant local news and events via Serper News API."""
         api_key = os.getenv("SERPER_API_KEY")
         if not api_key:
+            print("[SerperService] SERPER_API_KEY not set")
             return []
 
-        # Target keywords for relevant news + negative filters to remove junk
-        positive_keywords = "(festivals OR concerts OR transport strikes OR travel alerts OR local holidays OR major sports events)"
-        negative_keywords = "-horoscope -gold -massacre -history -anniversary -cricket -stock"
-        query = f"{positive_keywords} in {city} {negative_keywords}"
+        # Broad query to maximize news results, then AI filters the junk
+        query = f"{city} travel tourism events festivals news"
         
         try:
             async with httpx.AsyncClient() as client:
                 url = "https://google.serper.dev/news"
                 headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
-                # tbs: qdr:w2 limits results to icons from the last 2 weeks
                 payload = {
                     "q": query, 
-                    "num": 20, # Fetch more to have better filtering pool
-                    "tbs": "qdr:w2" 
+                    "num": 20,  # Fetch more to have better filtering pool
+                    "tbs": "qdr:m"  # Last month for better coverage
                 }
                 response = await client.post(url, headers=headers, json=payload, timeout=8.0)
+                print(f"[SerperService] Status: {response.status_code} for query: {query}")
                 if response.status_code == 200:
                     data = response.json()
                     news_results = data.get("news", [])
+                    print(f"[SerperService] Raw results: {len(news_results)} articles")
                     
-                    # AI Filtering for extreme relevance
+                    if not news_results:
+                        return []
+
+                    # AI Filtering for travel relevance
                     filter_service = NewsFilterService()
                     filtered_news = await filter_service.filter_relevant_news(city, news_results)
-                    return filtered_news[:5] # Return top 5 most relevant
+                    print(f"[SerperService] After AI filter: {len(filtered_news)} articles")
+                    return filtered_news[:5]  # Return top 5 most relevant
+                else:
+                    print(f"[SerperService] Error body: {response.text[:200]}")
         except Exception as e:
-            print(f"Serper API Error: {e}")
+            print(f"[SerperService] Error: {e}")
         return []
 
 
@@ -261,52 +267,75 @@ class NewsFilterService:
     async def filter_relevant_news(self, city: str, news: List[Dict]) -> List[Dict]:
         """Use LLM to filter news items for travel relevance."""
         if not self.client or not news:
+            print(f"[NewsFilter] Skipping filter — client={bool(self.client)}, news_count={len(news)}")
             return news
 
         # Prepare a list of headlines for the LLM to review
-        headlines = "\n".join([f"{i}: {n.get('title')}" for i, n in enumerate(news)])
+        headlines = "\n".join([f"{i}: {n.get('title', 'No title')}" for i, n in enumerate(news)])
         
         prompt = f"""
         City: {city}
         News Headlines:
         {headlines}
         
-        TASK: Critically evaluate these headlines for "Travel Utility".
-        RELEVANT (Return index):
-        - Logistical impact (strikes, weather alerts, airport news).
-        - Entertainment (concerts, music festivals, food fairs).
-        - Cultural (major local holidays, parades).
+        TASK: Evaluate which headlines are useful for a TOURIST visiting {city}.
+        KEEP (include index) if the news is about:
+        - Festivals, events, concerts, food fairs, cultural celebrations.
+        - Transport strikes, road closures, airport news affecting tourists.
+        - Weather emergencies, natural disasters, safety alerts.
+        - Popular tourist attractions opening/closing.
+        - Major sports events happening in the city.
         
-        IRRELEVANT (Discard - DO NOT return index):
-        - Economic data (gold rates, housing, stocks).
-        - Historical/Commemorative (anniversaries of massacres, old events).
-        - Routine crime/politics (standard local arrests, minor govt changes).
-        - Generic greetings (WhatsApp status wishes).
+        DISCARD (exclude index) only if:
+        - Pure financial data (gold rates, share prices).
+        - Routine local politics with no tourist impact.
+        - Purely local sports results with no event happening.
         
-        Return ONLY a JSON array of the indices of the HIGHLY UTILITY headlines for a tourist currently in the city. 
-        Example: [0, 2, 5]
+        When in doubt, KEEP the article. Return a JSON object with key "indices" containing
+        an array of the article indices to keep.
+        Example: {{"indices": [0, 2, 5]}}
         """
         
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a travel intelligence filter. Response must be a JSON list of numbers."},
+                    {"role": "system", "content": "You are a travel intelligence filter. Always return valid JSON with an 'indices' key containing an array of numbers."},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                max_tokens=200
             )
             raw = response.choices[0].message.content
-            indices_data = json.loads(raw)
-            # Support both {"indices": [...]} and [...] formats if LLM varies
-            indices = indices_data.get("indices", indices_data) if isinstance(indices_data, dict) else indices_data
+            print(f"[NewsFilter] LLM response: {raw}")
+            parsed = json.loads(raw)
             
+            # Robustly extract indices from any key the LLM might use
+            indices = None
+            if isinstance(parsed, list):
+                indices = parsed
+            elif isinstance(parsed, dict):
+                # Try common key names
+                for key in ("indices", "relevant", "result", "keep", "selected"):
+                    if key in parsed and isinstance(parsed[key], list):
+                        indices = parsed[key]
+                        break
+                if indices is None:
+                    # Take the first list value found
+                    for v in parsed.values():
+                        if isinstance(v, list):
+                            indices = v
+                            break
+
             if not isinstance(indices, list):
-                return news # Fallback to all if parsing fails
-                
-            return [news[i] for i in indices if i < len(news)]
+                print("[NewsFilter] Could not parse indices, returning all news")
+                return news
+
+            result = [news[i] for i in indices if isinstance(i, int) and i < len(news)]
+            # Safety: if filter removes everything, return all news 
+            return result if result else news
         except Exception as e:
-            print(f"NewsFilter Error: {e}")
+            print(f"[NewsFilter] Error: {e} — returning all news as fallback")
             return news
 
 

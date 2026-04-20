@@ -33,10 +33,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Build outputs
-
-
-build/
+# Build outputs (kept for AWS deployment)
+# dist/ and build/ are intentionally tracked
 coverage/
 
 # Docker
@@ -51,7 +49,6 @@ coverage/
 # =========================
 
 frontend/node_modules/
-frontend/dist/
 frontend/.vite/
 frontend/.env
 frontend/.env.*
@@ -63,8 +60,6 @@ frontend/.env.*
 # =========================
 
 backend/node_modules/
-backend/dist/
-backend/build/
 backend/.env
 backend/.env.*
 backend/coverage/

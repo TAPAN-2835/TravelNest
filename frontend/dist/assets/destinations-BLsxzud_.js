@@ -1,0 +1,1 @@
+import{a as s}from"./index-B3oUB54I.js";const n={getDestinations:async t=>(await s.get("/destinations",{params:t})).data,getById:async t=>(await s.get(`/destinations/${t}`)).data};export{n as destinationsApi};
